@@ -88,7 +88,6 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             match = re.search(r'\b(declined|decline)[^a-zA-Z](.*?)[\.]', msg)
             reason.append(match.group(2))
 
-
         elif re.match(regex1, msg):
             match = re.match(regex1, msg)
             sum += float(match.group(2))
@@ -208,8 +207,6 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             s_time1 = re.sub("\D", '', "/Date(" + str(data[x]["date"]) + ")/")
             d_time1 = datetime.datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
             date_mab.append(d_time1)
-    print(count)
-    print(sum)
     print(count_mab)
     print(date_mab)
     # Create a new DataFrame with messages and amounts debited
