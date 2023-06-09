@@ -19,12 +19,13 @@ pattern_w1 = r"(?i).*(debited|debit)"
 with open('data.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     for x in range(len(data)):
-        data[x]["body"] = data[x]["body"].replace(",", "")
-        data[x]["body"] = data[x]["body"].replace(",", "")
+        data[x]["body"] = data[x]["body"].replace(",", "")  # removing comma to read the amount in full form
 
     count = 0
     count_mab = 0
     sum = 0
+    acc_bal_amt = 0
+    acc_count = 0
     str_temp = []
     account_no = []
     transaction_id = []
@@ -44,6 +45,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
         msg = data[x]["body"]
         if re.search(r".*EMI.*", msg, re.IGNORECASE):
             count += 1
+
             # msg contains the word EMI.
             # check if it is a reminder message
             if re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg, re.IGNORECASE):
@@ -77,6 +79,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
         elif re.match(pattern_w, msg):
             pass
 
+        # finding occurrences of declined payments
         elif re.search(r'\b(declined|decline)[^a-zA-Z](.*?)[\.]', msg):
             val = 1
             decline_bit = 1
@@ -88,6 +91,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             match = re.search(r'\b(declined|decline)[^a-zA-Z](.*?)[\.]', msg)
             reason.append(match.group(2))
 
+        # finding the credit sms
         elif re.match(regex1, msg):
             match = re.match(regex1, msg)
             sum += float(match.group(2))
@@ -108,6 +112,9 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             amount.append(None)
             count += 1
             val = 1
+
+        # special case of credit messages are dealt here where those sms aren't categorized which are actually debit sms
+        # but provide information of account getting credited
         elif re.match(regex3, msg) and (not re.match(pattern_w1, msg)):
             match = re.match(regex3, msg)
             sum += float(match.group(2))
@@ -119,6 +126,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             count += 1
             val = 1
 
+        # bounce transactions are fetched here
         elif re.search(r"\b(bounce)\b", msg, re.IGNORECASE):
             match = re.search(r"\b(bounce)\b", msg, re.IGNORECASE)
             val = 1
@@ -132,6 +140,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             else:
                 amount.append(None)
 
+        # finding debit messages and finding amount debited
         elif re.search(regex4, msg):
             val = 1
             match = re.search(regex4, msg, re.IGNORECASE)
@@ -153,9 +162,13 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             category.append("debit")
 
         if val == 1:
+            # regex to find account numbers
             pattern = r"(?i)(A/c no.|a/c no.|ac no.|AC no.|Ac no.)\D*(\d+(?:\.\d+)?).*"
-            pattern1 = r"(?i)(A/c |a/c |ac |AC |Ac |account XXXXXXXX|Account XXXXXXXX|account ending with)\D*(\d+(?:\.\d+)?).*"
+            pattern1 = r"(?i)(A/c |a/c |ac |AC |Ac |account XXXXXXXX|Account XXXXXXXX|account ending with)\D*(\d+(" \
+                       r"?:\.\d+)?).*"
             pattern2 = r"(?i)(ef | Ref | Reference |txn |Txn )\D*(\d+(?:\.\d+)?).*"
+
+            # regex to find transaction ids/reference numbers
             pattern3 = r"Ref\.No:(\d+)"  # to match the Ref No
             pattern4 = r"IMPS/P2A/(\d+)/(\d+)(?:/remar)?"  # to match the IMPS/P2A value
             pattern5 = r"NEFT.*?(\d+)"  # to extarct NEFT
@@ -171,6 +184,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             match8 = re.search(pattern7, msg)
             if decline_bit == 0: reason.append(None)
 
+            # finding account number if present in the sms
             if match1:
                 account_no.append(match1.group(2))
             elif match2:
@@ -178,6 +192,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             else:
                 account_no.append(None)
 
+            # fetching transaction ids/reference numbers
             if match3:
                 transaction_id.append(match3.group(2))
             elif match4:
@@ -196,19 +211,24 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             match1 = re.search(r'\b(balance|bal|bal ).*(Rs.|INR |Rs. |INR)(\d+)', msg)
             match2 = re.search(r'\b(balance|bal|bal ).*(Rs. -|INR -)(\d+)', msg)
 
+            # finding account balance from sms
             if match1:
                 acc_bal.append(float(match1.group(3)))
+                acc_bal_amt += float(match1.group(3))
+                acc_count += 1
             elif match2:
                 acc_bal.append(int(match2.group(3)) * (-1))
+                acc_bal_amt += int(match2.group(3)) * (-1)
+                acc_count += 1
             else:
                 acc_bal.append(None)
-        if bool(re.search(r'\b(mab)\b', msg, re.IGNORECASE)):
+        if bool(re.search(r'\b(mab)\b', msg, re.IGNORECASE)):  # finding mab occurrences
             count_mab += 1
             s_time1 = re.sub("\D", '', "/Date(" + str(data[x]["date"]) + ")/")
             d_time1 = datetime.datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
             date_mab.append(d_time1)
-    print(count_mab)
-    print(date_mab)
+    print("Dates for mab notice\n", date_mab)
+    print("Average account balance of the customer is", int(acc_bal_amt / acc_count))  # avg account balance
     # Create a new DataFrame with messages and amounts debited
     new_df = pd.DataFrame({'Message': str_temp, 'Amount Debited': amountdebited, 'Amount Credited': amountcredited,
                            'account number': account_no, 'transaction id': transaction_id, "Amount": amount,
