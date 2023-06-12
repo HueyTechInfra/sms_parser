@@ -29,22 +29,34 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
         d_time = datetime.strptime(d_time1, format)
         if date_min > d_time: date_min = d_time
         if date_max < d_time: date_max = d_time
+    duration = (date_max - date_min).days
     print("we have sms data of total", (date_max - date_min).days, "that is from", date_min, "to", date_max)
-
     count = 0
     count_mab = 0
     sum = 0
     acc_bal_amt = 0
     acc_count = 0
     sum_debit_30 = sum_debit_60 = sum_debit_90 = sum_debit = 0
+    count_debit_30 = count_debit_60 = count_debit_90 = count_debit = 0
     sum_credit_30 = sum_credit_60 = sum_credit_90 = sum_credit = 0
+    count_credit_30 = count_credit_60 = count_credit_90 = count_credit = 0
     count_bounce_30 = count_bounce_60 = count_bounce_90 = count_bounce = 0
     count_decline_30 = count_decline_60 = count_decline_90 = count_decline = 0
+    acc_bal_max_30 = acc_bal_max_60 = acc_bal_max_90 = acc_bal_max = 0
+    acc_bal_min_30 = acc_bal_min_60 = acc_bal_min_90 = acc_bal_min = 0
+    cnt_legal_90 = cnt_legal_60 = cnt_legal_30 = cnt_legal = 0
+    cnt_neft_rtgs_imps_tran = cnt_neft_rtgs_imps_tran_30 = cnt_neft_rtgs_imps_tran_60 = cnt_neft_rtgs_imps_tran_90 = 0
+    cnt_below_mab_penalty_occurances = cnt_below_mab_penalty_occurances_90 = cnt_below_mab_penalty_occurances_60 = cnt_below_mab_penalty_occurances_30 = 0
+    sum_card_30 = sum_card_60 = sum_card_90 = sum_card = 0
+    count_card_30 = count_card_60 = count_card_90 = count_card = 0
+    sum_atm_30 = sum_atm_60 = sum_atm_90 = sum_atm = 0
+    count_atm_30 = count_atm_60 = count_atm_90 = count_atm = 0
     str_temp = []
     account_no = []
     transaction_id = []
     amountcredited = []
     amountdebited = []
+
     amount = []
     category = []
     reason = []
@@ -95,7 +107,11 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                     category.append("EMI")
         elif re.match(pattern_w, msg):
             pass
-
+        elif re.match(r'.*(legal notice)',msg,re.IGNORECASE):
+            cnt_legal+=1
+            if(date_max-d).days <= 30: cnt_legal_30+=1
+            if (date_max - d).days <= 60: cnt_legal_60 += 1
+            if (date_max - d).days <= 90: cnt_legal_90 += 1
         # finding occurrences of declined payments
         elif re.search(r'\b(declined|decline)[^a-zA-Z](.*?)[\.]', msg):
             val = 1
@@ -110,9 +126,9 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             count_decline += 1  # lifetime decline
             if (date_max - d).days <= 30:
                 count_decline_30 += 1
-            elif (date_max - d).days <= 60:
+            if (date_max - d).days <= 60:
                 count_decline_60 += 1
-            elif (date_max - d).days <= 90:
+            if (date_max - d).days <= 90:
                 count_decline_90 += 1
 
         # finding the credit sms
@@ -125,12 +141,16 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             str_temp.append(msg)
             amount.append(None)
             sum_credit += float(match.group(2))  # lifetime credit
+            count_credit += 1
             if (date_max - d).days <= 30:
                 sum_credit_30 += float(match.group(2))
-            elif (date_max - d).days <= 60:
+                count_credit_30 += 1
+            if (date_max - d).days <= 60:
                 sum_credit_60 += float(match.group(2))
-            elif (date_max - d).days <= 90:
+                count_credit_60 += 1
+            if (date_max - d).days <= 90:
                 sum_credit_90 += float(match.group(2))
+                count_credit_90 += 1
             count += 1
             val = 1
         elif re.match(regex2, msg):
@@ -142,12 +162,16 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             str_temp.append(msg)
             amount.append(None)
             sum_credit += float(match.group(2))  # lifetime credit
+            count_credit += 1
             if (date_max - d).days <= 30:
                 sum_credit_30 += float(match.group(2))
-            elif (date_max - d).days <= 60:
+                count_credit_30 += 1
+            if (date_max - d).days <= 60:
                 sum_credit_60 += float(match.group(2))
-            elif (date_max - d).days <= 90:
+                count_credit_60 += 1
+            if (date_max - d).days <= 90:
                 sum_credit_90 += float(match.group(2))
+                count_credit_90 += 1
             count += 1
             val = 1
 
@@ -162,12 +186,16 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             str_temp.append(msg)
             amount.append(None)
             sum_credit += float(match.group(2))  # lifetime credit
+            count_credit += 1
             if (date_max - d).days <= 30:
                 sum_credit_30 += float(match.group(2))
-            elif (date_max - d).days <= 60:
+                count_credit_30 += 1
+            if (date_max - d).days <= 60:
                 sum_credit_60 += float(match.group(2))
-            elif (date_max - d).days <= 90:
+                count_credit_60 += 1
+            if (date_max - d).days <= 90:
                 sum_credit_90 += float(match.group(2))
+                count_credit_90 += 1
             count += 1
             val = 1
 
@@ -187,9 +215,9 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             count_bounce += 1  # lifetime bounce
             if (date_max - d).days <= 30:
                 count_bounce_30 += 1
-            elif (date_max - d).days <= 60:
+            if (date_max - d).days <= 60:
                 count_bounce_60 += 1
-            elif (date_max - d).days <= 90:
+            if (date_max - d).days <= 90:
                 count_bounce_90 += 1
 
         # finding debit messages and finding amount debited
@@ -198,12 +226,16 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             match = re.search(regex4, msg, re.IGNORECASE)
             amountdebited.append(float(match.group(1)))
             sum_debit += float(match.group(1))  # lifetime debit
+            count_debit += 1
             if (date_max - d).days <= 30:
                 sum_debit_30 += float(match.group(1))
-            elif (date_max - d).days <= 60:
+                count_debit_30 += 1
+            if (date_max - d).days <= 60:
                 sum_debit_60 += float(match.group(1))
-            elif (date_max - d).days <= 90:
+                count_debit_60 += 1
+            if (date_max - d).days <= 90:
                 sum_debit_90 += float(match.group(1))
+                count_debit_90 += 1
             amountcredited.append(None)
             str_temp.append(msg)
             amount.append(None)
@@ -215,12 +247,16 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             val = 1
             amountdebited.append(float(match.group(1)))
             sum_debit += float(match.group(1))  # lifetime debit
+            count_debit += 1
             if (date_max - d).days <= 30:
                 sum_debit_30 += float(match.group(1))
-            elif (date_max - d).days <= 60:
+                count_debit_30 += 1
+            if (date_max - d).days <= 60:
                 sum_debit_60 += float(match.group(1))
-            elif (date_max - d).days <= 90:
+                count_debit_60 += 1
+            if (date_max - d).days <= 90:
                 sum_debit_90 += float(match.group(1))
+                count_debit_90 += 1
             amountcredited.append(None)
             str_temp.append(msg)
             amount.append(None)
@@ -240,6 +276,10 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             pattern5 = r"NEFT.*?(\d+)"  # to extarct NEFT
             pattern6 = r"UPI/(?:CRADJ|P2A)/([^/]+)"  # to extract UPI
             pattern7 = r"Info\D*(\d{6,})"  # to extract Info
+            pattern8 = r"(?i)(?:Rs\.?|INR)\s*([\d,]+\.\d+|\d+(?:,\d+)?)\b.*?\bdebited\b.*?\bcard\b" # regex for card transactions
+            #regex for atm transactions
+            pattern9 = r"(?i)(?:Rs\.?|INR)\s*(?:\S+\s+)?([\d,.]+).*?withdrawn.*?(?:\s+\S+)?\s+atm"
+            pattern10 = r"(?i)Debited\s*(?:\S+\s+)?(?:Rs\.?|INR)\s*(?:\S+\s+)?([\d,.]+).*?CASH-ATM"
             match1 = re.search(pattern, msg)
             match2 = re.search(pattern1, msg)
             match3 = re.search(pattern2, msg)
@@ -248,6 +288,9 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             match6 = re.search(pattern5, msg, re.IGNORECASE)
             match7 = re.search(pattern6, msg)
             match8 = re.search(pattern7, msg)
+            match9 = re.search(pattern8, msg, re.IGNORECASE)
+            match10 = re.search(pattern9, msg, re.IGNORECASE)
+            match11 = re.search(pattern10, msg, re.IGNORECASE)
             if decline_bit == 0: reason.append(None)
 
             # finding account number if present in the sms
@@ -282,27 +325,156 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                 acc_bal.append(float(match1.group(3)))
                 acc_bal_amt += float(match1.group(3))
                 acc_count += 1
+
+                # comparing account balances to find the maximum and minimum values in different duration slabs
+                if float(match1.group(3)) > acc_bal_max:
+                    acc_bal_max = float(match1.group(3))
+                elif float(match1.group(3)) < acc_bal_min:
+                    acc_bal_min = float(match1.group(3))
+                if (date_max - d).days <= 30:
+                    if float(match1.group(3)) > acc_bal_max_30:
+                        acc_bal_max_30 = float(match1.group(3))
+                    elif float(match1.group(3)) < acc_bal_min_30:
+                        acc_bal_min_30 = float(match1.group(3))
+                if (date_max - d).days <= 60:
+                    if float(match1.group(3)) > acc_bal_max_60:
+                        acc_bal_max_60 = float(match1.group(3))
+                    elif float(match1.group(3)) < acc_bal_min_60:
+                        acc_bal_min_60 = float(match1.group(3))
+                if (date_max - d).days <= 90:
+                    if float(match1.group(3)) > acc_bal_max_90:
+                        acc_bal_max_90 = float(match1.group(3))
+                    elif float(match1.group(3)) < acc_bal_min_90:
+                        acc_bal_min_90 = float(match1.group(3))
+
             elif match2:
                 acc_bal.append(int(match2.group(3)) * (-1))
                 acc_bal_amt += int(match2.group(3)) * (-1)
                 acc_count += 1
+
+                # comparing account balances to find the minimum value in different duration slabs
+                if int(match2.group(3)) * (-1) < acc_bal_min:
+                    acc_bal_min = int(match2.group(3)) * (-1)
+                if (date_max - d).days <= 30 and int(match2.group(3)) * (-1) < acc_bal_min_30:
+                    acc_bal_min_30 = int(match2.group(3)) * (-1)
+                if (date_max - d).days <= 60 and int(match2.group(3)) * (-1) < acc_bal_min_60:
+                    acc_bal_min_60 = int(match2.group(3)) * (-1)
+                if (date_max - d).days <= 90 and int(match2.group(3)) * (-1) < acc_bal_min_90:
+                    acc_bal_min_90 = int(match2.group(3)) * (-1)
             else:
                 acc_bal.append(None)
+
+            # counting the neft,imps and rtgs transactions according to date slabs
+            if match5 or match6:
+                cnt_neft_rtgs_imps_tran += 1
+                if (date_max - d).days <= 30: cnt_neft_rtgs_imps_tran_30 += 1
+                if (date_max - d).days <= 60: cnt_neft_rtgs_imps_tran_60 += 1
+                if (date_max - d).days <= 90: cnt_neft_rtgs_imps_tran_90 += 1
+
+            if match9:
+                amount_card = float(match9.group(1).replace(',', ''))
+                count_card += 1
+                sum_card += amount_card
+                if (date_max - d).days <= 30:
+                    count_card_30 += 1
+                    sum_card_30 += amount_card
+                if (date_max - d).days <= 60:
+                    count_card_60 += 1
+                    sum_card_60 += amount_card
+                if (date_max - d).days <= 90:
+                    count_card_90 += 1
+                    sum_card_90 += amount_card
+            # finding atm transactions sum and count in different time slabs
+            elif match10 or match11:
+                if match10: match = match10
+                else: match = match11
+                amount_atm = float(match.group(1).replace(',', ''))
+                count_atm += 1
+                sum_atm += amount_atm
+                if (date_max - d).days <= 30:
+                    count_atm_30 += 1
+                    sum_atm_30 += amount_atm
+                if (date_max - d).days <= 60:
+                    count_atm_60 += 1
+                    sum_atm_60 += amount_atm
+                if (date_max - d).days <= 90:
+                    count_atm_90 += 1
+                    sum_atm_90 += amount_atm
+
         if bool(re.search(r'\b(mab)\b', msg, re.IGNORECASE)):  # finding mab occurrences
-            count_mab += 1
-            s_time1 = re.sub("\D", '', "/Date(" + str(data[x]["date"]) + ")/")
-            d_time1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
-            date_mab.append(d_time1)
-    print("Dates for mab notice\n", date_mab)
-    print("Average account balance of the customer is", int(acc_bal_amt / acc_count))  # avg account balance
+            cnt_below_mab_penalty_occurances += 1
+            if (date_max - d).days <= 30: cnt_below_mab_penalty_occurances_30 += 1
+            if (date_max - d).days <= 60: cnt_below_mab_penalty_occurances_60 += 1
+            if (date_max - d).days <= 90: cnt_below_mab_penalty_occurances_90 += 1
+    avg_acc_bal = int(acc_bal_amt / acc_count)  # avg account balance
     # Create a new DataFrame with messages and amounts debited
     new_df = pd.DataFrame({'Message': str_temp, 'Amount Debited': amountdebited, 'Amount Credited': amountcredited,
                            'account number': account_no, 'transaction id': transaction_id, "Amount": amount,
                            "category": category, "reason": reason, "account balance": acc_bal})
     # Save the new DataFrame to a new Excel file
     new_df.to_excel('messages_with_amountsV2.xlsx', index=False)
-    print(sum_credit, sum_credit_90, sum_credit_60, sum_credit_30)
-    print(sum_debit, sum_debit_90, sum_debit_60, sum_debit_30)
-    # print(str_temp)
+
+    # computing values for debit transactions
+    cnt_avg_daily_debit_trans = count_debit / duration
+    cnt_avg_daily_debit_trans_90 = count_debit_90 / 90
+    cnt_avg_daily_debit_trans_60 = count_debit_60 / 60
+    cnt_avg_daily_debit_trans_30 = count_debit_30 / 30
+    ratio_cnt_avg_daily_debit_trans_30_to_90 = cnt_avg_daily_debit_trans_30 / cnt_avg_daily_debit_trans_90
+    ratio_cnt_avg_daily_debit_trans_30_to_60 = cnt_avg_daily_debit_trans_30 / cnt_avg_daily_debit_trans_60
+    amt_avg_daily_debit_trans = int(sum_debit / duration)
+    amt_avg_daily_debit_trans_90 = int(sum_debit_90 / 90)
+    amt_avg_daily_debit_trans_60 = int(sum_debit_60 / 60)
+    amt_avg_daily_debit_trans_30 = int(sum_debit_30 / 30)
+    ratio_amt_avg_daily_debit_trans_30_to_90 = amt_avg_daily_debit_trans_30 / amt_avg_daily_debit_trans_90
+    ratio_amt_avg_daily_debit_trans_30_to_60 = amt_avg_daily_debit_trans_30 / amt_avg_daily_debit_trans_60
+    amt_avg_debit_per_trans = sum_debit / count_debit
+    amt_avg_debit_per_trans_90 = sum_debit_90 / count_debit_90
+    amt_avg_debit_per_trans_60 = sum_debit_60 / count_debit_60
+    amt_avg_debit_per_trans_30 = sum_debit_30 / count_debit_30
+    ratio_amt_avg_debit_per_trans_30_to_90 = amt_avg_debit_per_trans_30 / amt_avg_daily_debit_trans_90
+    ratio_amt_avg_debit_per_trans_30_to_60 = amt_avg_debit_per_trans_30 / amt_avg_daily_debit_trans_60
+
+    print("Count of avg daily debit transactions",cnt_avg_daily_debit_trans)
+    print("Count of avg daily debit transactions for last 90 days is",cnt_avg_daily_debit_trans_90)
+    print("amount of average debit transaction is",amt_avg_debit_per_trans)
+    print("ratio of average amount debited daily within last 30 days to last 90 days is ", ratio_amt_avg_daily_debit_trans_30_to_90)
+    print("ratio of average amount debited daily per transaction within last 30 days to last 90 days is ", ratio_amt_avg_debit_per_trans_30_to_90)
+    # computing values for credit transactions
+    cnt_avg_daily_credit_trans = count_credit / duration
+    cnt_avg_daily_credit_trans_90 = count_credit_90 / 90
+    cnt_avg_daily_credit_trans_60 = count_credit_60 / 60
+    cnt_avg_daily_credit_trans_30 = count_credit_30 / 30
+    ratio_cnt_avg_daily_credit_trans_30_to_90 = cnt_avg_daily_credit_trans_30 / cnt_avg_daily_credit_trans_90
+    ratio_cnt_avg_daily_credit_trans_30_to_60 = cnt_avg_daily_credit_trans_30 / cnt_avg_daily_credit_trans_60
+    amt_avg_daily_credit_trans = int(sum_credit / duration)
+    amt_avg_daily_credit_trans_90 = int(sum_credit_90 / 90)
+    amt_avg_daily_credit_trans_60 = int(sum_credit_60 / 60)
+    amt_avg_daily_credit_trans_30 = int(sum_credit_30 / 30)
+    ratio_amt_avg_daily_credit_trans_30_to_90 = amt_avg_daily_credit_trans_30 / amt_avg_daily_credit_trans_90
+    ratio_amt_avg_daily_credit_trans_30_to_60 = amt_avg_daily_credit_trans_30 / amt_avg_daily_credit_trans_60
+    amt_avg_credit_per_trans = sum_credit / count_credit
+    amt_avg_credit_per_trans_90 = sum_credit_90 / count_credit_90
+    amt_avg_credit_per_trans_60 = sum_credit_60 / count_credit_60
+    amt_avg_credit_per_trans_30 = sum_credit_30 / count_credit_30
+    ratio_amt_avg_credit_per_trans_30_to_90 = amt_avg_credit_per_trans_30 / amt_avg_daily_credit_trans_90
+    ratio_amt_avg_credit_per_trans_30_to_60 = amt_avg_credit_per_trans_30 / amt_avg_daily_credit_trans_60
+
+    ratio_total_debit_to_credit_amount = sum_debit / sum_credit
+    ratio_total_debit_to_credit_amount_90 = sum_debit_90 / sum_credit_90
+    ratio_total_debit_to_credit_amount_60 = sum_debit_60 / sum_credit_60
+    ratio_total_debit_to_credit_amount_30 = sum_debit_30 / sum_credit_30
+
+    print("similarly we can find the same parameters for credit transactions:")
+    print(cnt_avg_daily_credit_trans)
+    print(cnt_avg_daily_credit_trans_90)
+    print(amt_avg_credit_per_trans)
+    print(ratio_cnt_avg_daily_credit_trans_30_to_90)
+    print(ratio_amt_avg_credit_per_trans_30_to_90)
+    print("customer has had total",cnt_below_mab_penalty_occurances,"below mab occurences")
+    print("total number of neft/imps/rtgs payments have been",cnt_neft_rtgs_imps_tran)
+    print("customer has average account balance",avg_acc_bal)
+    print("number of payments declined have been",count_decline)
+
+
 json_file.close()
 workbook.save('complete_data.xlsx')
