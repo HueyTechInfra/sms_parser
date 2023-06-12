@@ -2,7 +2,7 @@ import json
 import re
 import openpyxl
 import pandas as pd
-import datetime
+from datetime import datetime
 
 regex = r"(?i).*(?:credited|received|Credited|Received)\D*(INR|Rs.)\D*(\d+(?:\.\d+)?)"
 regex1 = r"(?i).*(?:credited|received|Credited|Received)\D*(INR|Rs.)\D*(\d+(?:\.\d+)?)"
@@ -15,17 +15,31 @@ regex5 = r"(?i)debited \D*(?:Rs\.|INR)?\s*(\d+(?:\.\d+)?)"
 
 pattern_w = r"(?i).*(received|request|requested).*(received|request|requested)"
 pattern_w1 = r"(?i).*(debited|debit)"
-
+format = "%Y-%m-%d"
 with open('data.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
+    s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
+    date_min1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
+    date_min = datetime.strptime(date_min1, format)
+    date_max = date_min
     for x in range(len(data)):
         data[x]["body"] = data[x]["body"].replace(",", "")  # removing comma to read the amount in full form
+        s_time1 = re.sub("\D", '', "/Date(" + str(data[x]["date"]) + ")/")
+        d_time1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
+        d_time = datetime.strptime(d_time1, format)
+        if date_min > d_time: date_min = d_time
+        if date_max < d_time: date_max = d_time
+    print("we have sms data of total", (date_max - date_min).days, "that is from", date_min, "to", date_max)
 
     count = 0
     count_mab = 0
     sum = 0
     acc_bal_amt = 0
     acc_count = 0
+    sum_debit_30 = sum_debit_60 = sum_debit_90 = sum_debit = 0
+    sum_credit_30 = sum_credit_60 = sum_credit_90 = sum_credit = 0
+    count_bounce_30 = count_bounce_60 = count_bounce_90 = count_bounce = 0
+    count_decline_30 = count_decline_60 = count_decline_90 = count_decline = 0
     str_temp = []
     account_no = []
     transaction_id = []
@@ -41,6 +55,9 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
 
     for x in range(len(data)):
         val = 0
+        s_time1 = re.sub("\D", '', "/Date(" + str(data[x]["date"]) + ")/")
+        d1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
+        d = datetime.strptime(d1, format)
         decline_bit = 0
         msg = data[x]["body"]
         if re.search(r".*EMI.*", msg, re.IGNORECASE):
@@ -69,7 +86,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                     match = match1
                 elif match2:
                     match = match2
-                if (match1 or match2):
+                if match1 or match2:
                     str_temp.append(msg)
                     val = 1
                     amountdebited.append(float(match.group(1)))
@@ -90,6 +107,13 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             amount.append(None)
             match = re.search(r'\b(declined|decline)[^a-zA-Z](.*?)[\.]', msg)
             reason.append(match.group(2))
+            count_decline += 1  # lifetime decline
+            if (date_max - d).days <= 30:
+                count_decline_30 += 1
+            elif (date_max - d).days <= 60:
+                count_decline_60 += 1
+            elif (date_max - d).days <= 90:
+                count_decline_90 += 1
 
         # finding the credit sms
         elif re.match(regex1, msg):
@@ -100,6 +124,13 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             amountdebited.append(None)
             str_temp.append(msg)
             amount.append(None)
+            sum_credit += float(match.group(2))  # lifetime credit
+            if (date_max - d).days <= 30:
+                sum_credit_30 += float(match.group(2))
+            elif (date_max - d).days <= 60:
+                sum_credit_60 += float(match.group(2))
+            elif (date_max - d).days <= 90:
+                sum_credit_90 += float(match.group(2))
             count += 1
             val = 1
         elif re.match(regex2, msg):
@@ -110,6 +141,13 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             amountdebited.append(None)
             str_temp.append(msg)
             amount.append(None)
+            sum_credit += float(match.group(2))  # lifetime credit
+            if (date_max - d).days <= 30:
+                sum_credit_30 += float(match.group(2))
+            elif (date_max - d).days <= 60:
+                sum_credit_60 += float(match.group(2))
+            elif (date_max - d).days <= 90:
+                sum_credit_90 += float(match.group(2))
             count += 1
             val = 1
 
@@ -123,6 +161,13 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             amountdebited.append(None)
             str_temp.append(msg)
             amount.append(None)
+            sum_credit += float(match.group(2))  # lifetime credit
+            if (date_max - d).days <= 30:
+                sum_credit_30 += float(match.group(2))
+            elif (date_max - d).days <= 60:
+                sum_credit_60 += float(match.group(2))
+            elif (date_max - d).days <= 90:
+                sum_credit_90 += float(match.group(2))
             count += 1
             val = 1
 
@@ -139,12 +184,26 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                 amount.append(match.group(1))
             else:
                 amount.append(None)
+            count_bounce += 1  # lifetime bounce
+            if (date_max - d).days <= 30:
+                count_bounce_30 += 1
+            elif (date_max - d).days <= 60:
+                count_bounce_60 += 1
+            elif (date_max - d).days <= 90:
+                count_bounce_90 += 1
 
         # finding debit messages and finding amount debited
         elif re.search(regex4, msg):
             val = 1
             match = re.search(regex4, msg, re.IGNORECASE)
             amountdebited.append(float(match.group(1)))
+            sum_debit += float(match.group(1))  # lifetime debit
+            if (date_max - d).days <= 30:
+                sum_debit_30 += float(match.group(1))
+            elif (date_max - d).days <= 60:
+                sum_debit_60 += float(match.group(1))
+            elif (date_max - d).days <= 90:
+                sum_debit_90 += float(match.group(1))
             amountcredited.append(None)
             str_temp.append(msg)
             amount.append(None)
@@ -155,6 +214,13 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             match = re.search(regex5, msg, re.IGNORECASE)
             val = 1
             amountdebited.append(float(match.group(1)))
+            sum_debit += float(match.group(1))  # lifetime debit
+            if (date_max - d).days <= 30:
+                sum_debit_30 += float(match.group(1))
+            elif (date_max - d).days <= 60:
+                sum_debit_60 += float(match.group(1))
+            elif (date_max - d).days <= 90:
+                sum_debit_90 += float(match.group(1))
             amountcredited.append(None)
             str_temp.append(msg)
             amount.append(None)
@@ -225,7 +291,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
         if bool(re.search(r'\b(mab)\b', msg, re.IGNORECASE)):  # finding mab occurrences
             count_mab += 1
             s_time1 = re.sub("\D", '', "/Date(" + str(data[x]["date"]) + ")/")
-            d_time1 = datetime.datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
+            d_time1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
             date_mab.append(d_time1)
     print("Dates for mab notice\n", date_mab)
     print("Average account balance of the customer is", int(acc_bal_amt / acc_count))  # avg account balance
@@ -235,6 +301,8 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                            "category": category, "reason": reason, "account balance": acc_bal})
     # Save the new DataFrame to a new Excel file
     new_df.to_excel('messages_with_amountsV2.xlsx', index=False)
+    print(sum_credit, sum_credit_90, sum_credit_60, sum_credit_30)
+    print(sum_debit, sum_debit_90, sum_debit_60, sum_debit_30)
     # print(str_temp)
 json_file.close()
 workbook.save('complete_data.xlsx')
