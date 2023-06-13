@@ -3,6 +3,9 @@ import re
 import openpyxl
 import pandas as pd
 from datetime import datetime
+import matplotlib.pyplot as plt
+import numpy as np
+import parser_1 as parser
 
 regex = r"(?i).*(?:credited|received|Credited|Received)\D*(INR|Rs.)\D*(\d+(?:\.\d+)?)"
 regex1 = r"(?i).*(?:credited|received|Credited|Received)\D*(INR|Rs.)\D*(\d+(?:\.\d+)?)"
@@ -31,8 +34,8 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
         if date_max < d_time: date_max = d_time
     duration = (date_max - date_min).days
     print("we have sms data of total", (date_max - date_min).days, "that is from", date_min, "to", date_max)
-    count = 0
-    count_mab = 0
+    count_overdue = 0
+    count_emi = 0
     sum = 0
     acc_bal_amt = 0
     acc_count = 0
@@ -52,6 +55,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
     sum_atm_30 = sum_atm_60 = sum_atm_90 = sum_atm = 0
     count_atm_30 = count_atm_60 = count_atm_90 = count_atm = 0
     str_temp = []
+    date_sms = []
     account_no = []
     transaction_id = []
     amountcredited = []
@@ -73,11 +77,10 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
         decline_bit = 0
         msg = data[x]["body"]
         if re.search(r".*EMI.*", msg, re.IGNORECASE):
-            count += 1
-
             # msg contains the word EMI.
             # check if it is a reminder message
             if re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg, re.IGNORECASE):
+                count_overdue+=1
                 str_temp.append(msg)
                 val = 1
                 category.append("reminder")
@@ -91,6 +94,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                     amount.append(None)
             else:
                 # emi debit msg
+                count_emi+=1
                 match1 = re.search(regex4, msg, re.IGNORECASE)
                 match2 = re.search(regex5, msg, re.IGNORECASE)
 
@@ -151,7 +155,6 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             if (date_max - d).days <= 90:
                 sum_credit_90 += float(match.group(2))
                 count_credit_90 += 1
-            count += 1
             val = 1
         elif re.match(regex2, msg):
             match = re.match(regex2, msg)
@@ -172,7 +175,6 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             if (date_max - d).days <= 90:
                 sum_credit_90 += float(match.group(2))
                 count_credit_90 += 1
-            count += 1
             val = 1
 
         # special case of credit messages are dealt here where those sms aren't categorized which are actually debit sms
@@ -196,7 +198,6 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             if (date_max - d).days <= 90:
                 sum_credit_90 += float(match.group(2))
                 count_credit_90 += 1
-            count += 1
             val = 1
 
         # bounce transactions are fetched here
@@ -239,7 +240,6 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             amountcredited.append(None)
             str_temp.append(msg)
             amount.append(None)
-            count += 1
             category.append("debit")
 
         elif re.search(regex5, msg):
@@ -260,7 +260,6 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             amountcredited.append(None)
             str_temp.append(msg)
             amount.append(None)
-            count += 1
             category.append("debit")
 
         if val == 1:
@@ -292,12 +291,12 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             match10 = re.search(pattern9, msg, re.IGNORECASE)
             match11 = re.search(pattern10, msg, re.IGNORECASE)
             if decline_bit == 0: reason.append(None)
-
+            date_sms.append(d)
             # finding account number if present in the sms
             if match1:
-                account_no.append(match1.group(2))
+                account_no.append(int(match1.group(2)[-4:]))
             elif match2:
-                account_no.append(match2.group(2))
+                account_no.append(int(match2.group(2)[-4:]))
             else:
                 account_no.append(None)
 
@@ -409,8 +408,8 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
     avg_acc_bal = int(acc_bal_amt / acc_count)  # avg account balance
     # Create a new DataFrame with messages and amounts debited
     new_df = pd.DataFrame({'Message': str_temp, 'Amount Debited': amountdebited, 'Amount Credited': amountcredited,
-                           'account number': account_no, 'transaction id': transaction_id, "Amount": amount,
-                           "category": category, "reason": reason, "account balance": acc_bal})
+                           'Account Number': account_no, 'Transaction ID': transaction_id, "Amount": amount,
+                           "Category": category, "reason": reason, "Account Balance": acc_bal, "Date": date_sms})
     # Save the new DataFrame to a new Excel file
     new_df.to_excel('messages_with_amountsV2.xlsx', index=False)
 
@@ -439,7 +438,8 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
     print("amount of average debit transaction is",amt_avg_debit_per_trans)
     print("ratio of average amount debited daily within last 30 days to last 90 days is ", ratio_amt_avg_daily_debit_trans_30_to_90)
     print("ratio of average amount debited daily per transaction within last 30 days to last 90 days is ", ratio_amt_avg_debit_per_trans_30_to_90)
-    # computing values for credit transactions
+
+    # computing parameters for credit transactions
     cnt_avg_daily_credit_trans = count_credit / duration
     cnt_avg_daily_credit_trans_90 = count_credit_90 / 90
     cnt_avg_daily_credit_trans_60 = count_credit_60 / 60
@@ -475,7 +475,63 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
     print("customer has average account balance",avg_acc_bal)
     print("number of payments declined have been",count_decline)
 
+    # plotting graphs
+    categories = ['legal notices', 'below mab occurrences', 'debited successfully', 'declined payments', 'bounced '
+                                                                                                         'transactions']
+    values = [cnt_legal, cnt_below_mab_penalty_occurances, count_debit, count_decline, count_bounce]
+    fig = plt.figure(figsize=(12, 7))
+    plt.pie(values, labels=categories)
+
+    # show plot
+    plt.show()
+
+    barWidth = 0.25
+    fig = plt.subplots(figsize=(12, 8))
+
+    # set height of bar
+    IT = [sum_debit_30, sum_debit_60, sum_debit_90, sum_debit]
+    ECE = [sum_credit_30, sum_credit_60, sum_credit_90, sum_credit]
+    IT1 = [amt_avg_daily_debit_trans_30, amt_avg_daily_debit_trans_60, amt_avg_daily_debit_trans_90,
+           amt_avg_daily_debit_trans]
+    ECE1 = [amt_avg_daily_credit_trans_30, amt_avg_daily_credit_trans_60, amt_avg_daily_credit_trans_90,
+            amt_avg_daily_credit_trans]
+    # Set position of bar on X axis
+    br1 = np.arange(len(IT))
+    br2 = [x + barWidth for x in br1]
+
+    # Make the plot
+    plt.bar(br1, IT, color='r', width=barWidth,
+            edgecolor='grey', label='debit')
+    plt.bar(br2, ECE, color='g', width=barWidth,
+            edgecolor='grey', label='credit')
+
+    # Adding Xticks
+    plt.xlabel('Duration slabs', fontweight='bold', fontsize=15)
+    plt.ylabel('Amount', fontweight='bold', fontsize=15)
+    plt.xticks([r + barWidth for r in range(len(IT))],
+               ['Last 30 days', 'Last 60 days', 'Last 90 days', 'Total'])
+
+    plt.title("Total amount credited and debited according to duration slabs")
+    plt.legend()
+    plt.show()
+
+    plt.bar(br1, IT1, color='r', width=barWidth,
+            edgecolor='grey', label='debit')
+    plt.bar(br2, ECE1, color='g', width=barWidth,
+            edgecolor='grey', label='credit')
+
+    # Adding Xticks
+    plt.xlabel('Duration slabs', fontweight='bold', fontsize=15)
+    plt.ylabel('Amount', fontweight='bold', fontsize=15)
+    plt.xticks([r + barWidth for r in range(len(IT))],
+               ['Last 30 days', 'Last 60 days', 'Last 90 days', 'Total'])
+
+    plt.title("Total amount credited and debited on average on daily basis according to duration slabs")
+    plt.legend()
+    plt.show()
 
 json_file.close()
 workbook.save('complete_data.xlsx')
 
+
+parser.plot()
