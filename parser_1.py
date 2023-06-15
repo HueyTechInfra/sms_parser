@@ -2,6 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
+
 # from main import sum_debit_30, sum_credit_60, sum_debit_60, cnt_legal, cnt_below_mab_penalty_occurances,
 # count_decline, \ count_debit, count_bounce, amt_avg_daily_credit_trans_30, amt_avg_daily_credit_trans,
 # amt_avg_daily_credit_trans_60, \ amt_avg_daily_credit_trans_90, amt_avg_daily_debit_trans_90,
@@ -9,11 +10,11 @@ import matplotlib.pyplot as plt
 # sum_debit, sum_debit_90, \ sum_credit_90
 
 
-def plot():
+def comp():
     file = 'messages_with_amountsV2.xlsx'
 
     newData = pd.read_excel(file)
-    acc_no = []
+    acc_no = []  # contains account number corresponding to every sms
 
     credit = []
     debit = []
@@ -23,7 +24,7 @@ def plot():
     for x in newData['Account Number']:
         if x > 0: acc_no.append(x)
     res = []
-    [res.append(x) for x in acc_no if x not in res]
+    [res.append(x) for x in acc_no if x not in res]  # res contains unique account numbers
     acc_no = []
     for x in newData['Account Number']: acc_no.append(x)
     for x in newData['Amount Credited']:
@@ -63,3 +64,21 @@ def plot():
     plt.title("Amount credited and debited for each account of customer")
     plt.legend()
     plt.show()
+
+    # plot to show distribution of all messages among different categories
+    cat = []
+    for x in newData['Category']:
+        cat.append(x)
+    res1 = []
+    [res1.append(x) for x in cat if x not in res1]
+    count = [0] * len(res1)
+    for i in range(len(res1)):
+        for j in range(len(cat)):
+            if cat[j] == res1[i]: count[i] += 1
+
+    fig = plt.figure(figsize=(12, 7))
+    plt.pie(count, labels=res1)
+
+    # show plot
+    plt.show()
+

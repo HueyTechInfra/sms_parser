@@ -21,6 +21,11 @@ regex5 = r"(?i)debited \D*(?:Rs\.|INR)?\s*(\d+(?:\.\d+)?)"
 pattern_w = r"(?i).*(received|request|requested).*(received|request|requested)"
 pattern_w1 = r"(?i).*(debited|debit)"
 
+# pattern for utility messages
+regex_util1 = r"(?i)(?:Debited|Credited)\s*(?:\S+\s+)?(?:INR|Rs\.?|Rs)\s*([\d,.]+).*?recharge"
+regex_util2 = r"Recharge done\s*.*?MRP:\s*(?:INR|Rs\.?|Rs)([\d,.]+)"
+regex_util3 = r"(?:Rs\.?|INR)\s?([\d,.]+)\s*recharge successful"
+
 format = "%Y-%m-%d"  # used for extraction human-readable date from json date format
 
 with open('data.json', 'r', encoding='utf-8') as json_file:
@@ -36,8 +41,10 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
         d_time = datetime.strptime(d_time1, format)
 
         # calculation the range of dataset
-        if date_min > d_time: date_min = d_time
-        if date_max < d_time: date_max = d_time
+        if date_min > d_time:
+            date_min = d_time
+        if date_max < d_time:
+            date_max = d_time
 
     duration = (date_max - date_min).days
 
@@ -288,6 +295,23 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             amount.append(None)
             category.append("debit")
 
+        # finding utility sms
+
+        elif re.search(regex_util1, msg) or re.search(regex_util2, msg) or re.search(regex_util3, msg):
+            if re.search(regex_util1, msg):
+                match = re.search(regex_util1, msg)
+            elif re.search(regex_util2, msg):
+                match = re.search(regex_util2, msg)
+            elif re.search(regex_util3, msg):
+                match = re.search(regex_util3, msg)
+            val = 1
+            decline_bit = 0
+            category.append("utility")
+            str_temp.append(msg)
+            amountcredited.append(None)
+            amountdebited.append(None)
+            amount.append(float(match.group(1).replace(',', '')))
+
         if val == 1:
             # regex to find account numbers
             pattern = r"(?i)(A/c no.|a/c no.|ac no.|AC no.|Ac no.)\D*(\d+(?:\.\d+)?).*"
@@ -514,9 +538,9 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
     print("number of payments declined have been", count_decline)
 
     # plotting graphs
-    categories = ['legal notices', 'below mab occurrences', 'debited successfully', 'declined payments', 'bounced '
-                                                                                                         'transactions']
-    values = [cnt_legal, cnt_below_mab_penalty_occurances, count_debit, count_decline, count_bounce]
+    categories = ['legal notices', 'below mab occurrences', 'emi debits', 'declined payments', 'bounced '
+                                                                                               'transactions']
+    values = [cnt_legal, cnt_below_mab_penalty_occurances, count_emi, count_decline, count_bounce]
     fig = plt.figure(figsize=(12, 7))
     plt.pie(values, labels=categories)
 
@@ -571,4 +595,4 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
 json_file.close()
 workbook.save('complete_data.xlsx')
 
-parser.plot()
+parser.comp()
