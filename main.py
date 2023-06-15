@@ -25,10 +25,11 @@ pattern_w1 = r"(?i).*(debited|debit)"
 regex_util1 = r"(?i)(?:Debited|Credited)\s*(?:\S+\s+)?(?:INR|Rs\.?|Rs)\s*([\d,.]+).*?recharge"
 regex_util2 = r"Recharge done\s*.*?MRP:\s*(?:INR|Rs\.?|Rs)([\d,.]+)"
 regex_util3 = r"(?:Rs\.?|INR)\s?([\d,.]+)\s*recharge successful"
+regex_util4 = r"(?i)recharge.*?\b(?:Rs\.?|INR)\s*([\d,.]+)\b.*?successful"
 
 format = "%Y-%m-%d"  # used for extraction human-readable date from json date format
 
-with open('data.json', 'r', encoding='utf-8') as json_file:
+with open('data1.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
     date_min1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
@@ -73,15 +74,12 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
     transaction_id = []
     amountcredited = []
     amountdebited = []
-
     amount = []
     category = []
     reason = []
     acc_bal = []
     date_mab = []
-    workbook = openpyxl.load_workbook('complete_data.xlsx')
-    sheet = workbook.active
-
+    ztp = []
     for x in range(len(data)):
         val = 0  # pointer to decide later if sms if of financial type or promotional type
 
@@ -90,7 +88,6 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
         d = datetime.strptime(d1, format)
         decline_bit = 0
         msg = data[x]["body"]  # msg variable stores the body of the sms
-
         # check if msg contains the word EMI.
         if re.search(r".*EMI.*", msg, re.IGNORECASE):
 
@@ -111,7 +108,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                     amount.append(None)
             else:
                 # emi debit msg
-                count_emi += 1
+
                 match1 = re.search(regex4, msg, re.IGNORECASE)
                 match2 = re.search(regex5, msg, re.IGNORECASE)
 
@@ -120,6 +117,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                 elif match2:
                     match = match2
                 if match1 or match2:
+                    count_emi += 1
                     str_temp.append(msg)
                     val = 1
                     amountdebited.append(float(match.group(1)))
@@ -159,7 +157,8 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                 count_decline_90 += 1
 
         # finding the credit sms
-        elif re.match(regex1, msg):
+        elif re.match(regex1, msg) and not re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg,
+                                                     re.IGNORECASE):
             match = re.match(regex1, msg)
             sum += float(match.group(2))
             amountcredited.append(float(match.group(2)))
@@ -181,7 +180,8 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                 sum_credit_90 += float(match.group(2))
                 count_credit_90 += 1
             val = 1
-        elif re.match(regex2, msg):
+        elif re.match(regex2, msg) and not re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg,
+                                                     re.IGNORECASE):
             match = re.match(regex2, msg)
             sum += float(match.group(2))
             amountcredited.append(float(match.group(2)))
@@ -206,7 +206,8 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
 
         # special case of credit messages are dealt here where those sms aren't categorized which are actually debit sms
         # but provide information of account getting credited
-        elif re.match(regex3, msg) and (not re.match(pattern_w1, msg)):
+        elif re.match(regex3, msg) and (not re.match(pattern_w1, msg)) and not re.search(
+                r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg, re.IGNORECASE):
             match = re.match(regex3, msg)
             sum += float(match.group(2))
             amountcredited.append(float(match.group(2)))
@@ -249,6 +250,37 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                 count_bounce_60 += 1
             if (date_max - d).days <= 90:
                 count_bounce_90 += 1
+
+        # finding utility sms
+
+        elif re.search(regex_util1, msg) or re.search(regex_util2, msg) or re.search(regex_util3, msg) or re.search(regex_util4, msg):
+            if re.search(regex_util1, msg):
+                match = re.search(regex_util1, msg)
+            elif re.search(regex_util2, msg):
+                match = re.search(regex_util2, msg)
+            elif re.search(regex_util3, msg):
+                match = re.search(regex_util3, msg)
+            elif re.search(regex_util4, msg):
+                match = re.search(regex_util4, msg)
+            val = 1
+            decline_bit = 0
+            category.append("utility")
+            str_temp.append(msg)
+            amountcredited.append(None)
+            amountdebited.append(None)
+            amount.append(float(match.group(1).replace(',', '')))
+
+        # cheque returned
+        elif re.search(r'(cheque).*(returned)', msg, re.IGNORECASE):
+            match = re.search(r'(cheque).*(returned)', msg, re.IGNORECASE)
+            val = 1
+            decline_bit = 0
+            category.append("cheque returned")
+            str_temp.append(msg)
+            amountcredited.append(None)
+            amountdebited.append(None)
+            amount.append(None)
+
 
         # finding debit messages and amount debited
         elif re.search(regex4, msg):
@@ -295,23 +327,6 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             amount.append(None)
             category.append("debit")
 
-        # finding utility sms
-
-        elif re.search(regex_util1, msg) or re.search(regex_util2, msg) or re.search(regex_util3, msg):
-            if re.search(regex_util1, msg):
-                match = re.search(regex_util1, msg)
-            elif re.search(regex_util2, msg):
-                match = re.search(regex_util2, msg)
-            elif re.search(regex_util3, msg):
-                match = re.search(regex_util3, msg)
-            val = 1
-            decline_bit = 0
-            category.append("utility")
-            str_temp.append(msg)
-            amountcredited.append(None)
-            amountdebited.append(None)
-            amount.append(float(match.group(1).replace(',', '')))
-
         if val == 1:
             # regex to find account numbers
             pattern = r"(?i)(A/c no.|a/c no.|ac no.|AC no.|Ac no.)\D*(\d+(?:\.\d+)?).*"
@@ -321,8 +336,8 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
 
             # regex to find transaction ids/reference numbers
             pattern3 = r"Ref\.No:(\d+)"  # to match the Ref No
-            pattern4 = r"IMPS/P2A/(\d+)/(\d+)(?:/remar)?"  # to match the IMPS/P2A value
-            pattern5 = r"NEFT.*?(\d+)"  # to extarct NEFT
+            pattern4 = r"IMPS/\D+/(\d+)/(\d+)"  # to match the IMPS/P2A value
+            pattern5 = r"NEFT.*?(\d+)"  # to extract NEFT
             pattern6 = r"UPI/(?:CRADJ|P2A)/([^/]+)"  # to extract UPI
             pattern7 = r"Info\D*(\d{6,})"  # to extract Info
 
@@ -372,8 +387,8 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
             else:
                 transaction_id.append(None)
 
-            match1 = re.search(r'\b(balance|bal|bal ).*(Rs.|INR |Rs. |INR)(\d+)', msg)
-            match2 = re.search(r'\b(balance|bal|bal ).*(Rs. -|INR -)(\d+)', msg)
+            match1 = re.search(r'\b(balance|bal|bal ).*(Rs.|INR |Rs. |INR)(\d+)', msg, re.IGNORECASE)
+            match2 = re.search(r'\b(balance|bal|bal ).*(Rs. -|INR -)(\d+)', msg, re.IGNORECASE)
 
             # finding account balance from sms
             if match1:
@@ -420,7 +435,7 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
                 acc_bal.append(None)
 
             # counting the neft,imps and rtgs transactions according to date slabs
-            if match5 or match6:
+            if re.match(r'.*imps', msg, re.IGNORECASE) or match6:
                 cnt_neft_rtgs_imps_tran += 1
                 if (date_max - d).days <= 30: cnt_neft_rtgs_imps_tran_30 += 1
                 if (date_max - d).days <= 60: cnt_neft_rtgs_imps_tran_60 += 1
@@ -551,48 +566,46 @@ with open('data.json', 'r', encoding='utf-8') as json_file:
     fig = plt.subplots(figsize=(12, 8))
 
     # set height of bar
-    IT = [sum_debit_30, sum_debit_60, sum_debit_90, sum_debit]
-    ECE = [sum_credit_30, sum_credit_60, sum_credit_90, sum_credit]
-    IT1 = [amt_avg_daily_debit_trans_30, amt_avg_daily_debit_trans_60, amt_avg_daily_debit_trans_90,
-           amt_avg_daily_debit_trans]
-    ECE1 = [amt_avg_daily_credit_trans_30, amt_avg_daily_credit_trans_60, amt_avg_daily_credit_trans_90,
-            amt_avg_daily_credit_trans]
+    arr_bar_db = [sum_debit_30, sum_debit_60, sum_debit_90, sum_debit]
+    arr_bar_cr = [sum_credit_30, sum_credit_60, sum_credit_90, sum_credit]
+    arr_bar_db1 = [amt_avg_daily_debit_trans_30, amt_avg_daily_debit_trans_60, amt_avg_daily_debit_trans_90,
+                   amt_avg_daily_debit_trans]
+    arr_bar_cr1 = [amt_avg_daily_credit_trans_30, amt_avg_daily_credit_trans_60, amt_avg_daily_credit_trans_90,
+                   amt_avg_daily_credit_trans]
     # Set position of bar on X axis
-    br1 = np.arange(len(IT))
+    br1 = np.arange(len(arr_bar_db))
     br2 = [x + barWidth for x in br1]
 
     # Make the plot
-    plt.bar(br1, IT, color='r', width=barWidth,
+    plt.bar(br1, arr_bar_db, color='r', width=barWidth,
             edgecolor='grey', label='debit')
-    plt.bar(br2, ECE, color='g', width=barWidth,
+    plt.bar(br2, arr_bar_cr, color='g', width=barWidth,
             edgecolor='grey', label='credit')
 
     # Adding Xticks
     plt.xlabel('Duration slabs', fontweight='bold', fontsize=15)
     plt.ylabel('Amount', fontweight='bold', fontsize=15)
-    plt.xticks([r + barWidth for r in range(len(IT))],
+    plt.xticks([r + barWidth for r in range(len(arr_bar_db))],
                ['Last 30 days', 'Last 60 days', 'Last 90 days', 'Total'])
 
     plt.title("Total amount credited and debited according to duration slabs")
     plt.legend()
     plt.show()
 
-    plt.bar(br1, IT1, color='r', width=barWidth,
+    plt.bar(br1, arr_bar_db1, color='r', width=barWidth,
             edgecolor='grey', label='debit')
-    plt.bar(br2, ECE1, color='g', width=barWidth,
+    plt.bar(br2, arr_bar_cr1, color='g', width=barWidth,
             edgecolor='grey', label='credit')
 
     # Adding Xticks
     plt.xlabel('Duration slabs', fontweight='bold', fontsize=15)
     plt.ylabel('Amount', fontweight='bold', fontsize=15)
-    plt.xticks([r + barWidth for r in range(len(IT))],
+    plt.xticks([r + barWidth for r in range(len(arr_bar_db))],
                ['Last 30 days', 'Last 60 days', 'Last 90 days', 'Total'])
 
     plt.title("Total amount credited and debited on average on daily basis according to duration slabs")
     plt.legend()
     plt.show()
-
 json_file.close()
-workbook.save('complete_data.xlsx')
 
 parser.comp()

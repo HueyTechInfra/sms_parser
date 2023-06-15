@@ -46,9 +46,8 @@ for x in range(10400):
     message = f"{additional_pre_text} - {action} {account_number} with INR {amount}. {additional_post_text}"
 
     dataset.append(message)
-
-
-df = pd.DataFrame(dataset, columns=["Message"])
-df.to_excel("dataset.xlsx", index=False)
-
 print("DONE")
+
+data = 'data1.json'
+data_json = pd.read_json(data,convert_dates=True)
+print(data_json["body"].head())

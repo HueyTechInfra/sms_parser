@@ -41,6 +41,16 @@ def comp():
                     sum_db += amt_db[i]
         credit.append(sum_cr)
         debit.append(sum_db)
+
+    # eliminating accounts having no credit/debit ie they belong to different category
+    temp = []
+    for i in range(len(credit)):
+        if credit[i] == 0 and debit[i] == 0:
+            temp.append(i)
+    for i in range(len(temp)):
+        del res[temp[i] - i]
+        del credit[temp[i] - i]
+        del debit[temp[i] - i]
     fig = plt.figure(figsize=(10, 5))
     for i in range(len(res)):
         res[i] = str(res[i])
@@ -81,4 +91,3 @@ def comp():
 
     # show plot
     plt.show()
-
