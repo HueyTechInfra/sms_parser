@@ -1,6 +1,5 @@
 import json
 import re
-import openpyxl
 import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
@@ -49,7 +48,7 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
 
     duration = (date_max - date_min).days
 
-    print("we have sms data of total", (date_max - date_min).days, "that is from", date_min, "to", date_max)
+    print("we have sms data of total", duration, "that is from", date_min, "to", date_max)
     count_overdue = count_emi = 0
     sum = 0
     acc_bal_amt = acc_count = 0

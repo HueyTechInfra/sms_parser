@@ -1,53 +1,185 @@
-import random
-
+import json
+import re
 import pandas as pd
-from datetime import date, timedelta
+from datetime import datetime
+import matplotlib.pyplot as plt
+format = "%Y-%m-%d"  # used for extraction human-readable date from json date format
+with open('data1.json', 'r', encoding='utf-8') as json_file:
+    data = json.load(json_file)
+    s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
+    date_min1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
+    date_min = datetime.strptime(date_min1, format)
+    date_max = date_min
+    for x in range(len(data)):
+        data[x]["body"] = data[x]["body"].replace(",", "")  # removing comma to read the amount in full form
+        s_time1 = re.sub("\D", '', "/Date(" + str(data[x]["date"]) + ")/")
+        d_time1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
+        d_time = datetime.strptime(d_time1, format)
 
-actions = ["CREDITED", "RECEIVED", "DEBITED", "SALARY CREDIT", "EMI"]
+        # calculation the range of dataset
+        if date_min > d_time:
+            date_min = d_time
+        if date_max < d_time:
+            date_max = d_time
 
-additional_pre_texts = [
+    duration = (date_max - date_min).days
+json_file.close()
+duration = int(duration/30)
+file = 'messages_with_amountsV2.xlsx'
+d = pd.read_excel(file)
+salary = []
+date = []
+month = []
+year = []
+for i in range(len(d['Amount Credited'])):
+    x = d['Amount Credited'][i]
+    if x > 0:
+        salary.append(x)
+        date.append(d['Date'][i])
+        month.append(d['Date'][i])
+        year.append(d['Date'][i])
+for i in range(len(date)):
+    t = date[i]
+    t.to_pydatetime()
+    date[i] = t.day
+    month[i] = t.month
+    year[i] = t.year
+min_month = month[-1]
+min_year = year[-1]
+max_month = month[0]
+max_year = year[0]
+lst = []
+for k in range(30):
+    temp = []
+    for i in range(len(date)):
+        if date[i] == k:
+            temp.append(salary[i])
+    lst.append(temp)
+lst_old = lst.copy()
+count = 0
+for i in range(len(lst)):
+    if len(lst[i - count]) < duration-3:
+        del [lst[i - count]]
+        count += 1
+date_sal = []
+for i in range(len(lst)):
+    for k in range(len(lst[i])):
+        count = 0
+        amt = lst[i][k]
+        for t in range(len(lst[i])):
+            if amt + 5000 >= lst[i][t] >= amt - 5000:
+                count += 1
+        if count >= duration - 2:
+            if i not in date_sal:
+                date_sal.append(i)
+final_date = []
+salary_date = -1
+for x in range(len(lst_old)):
+    for i in date_sal:
+        if lst_old[x] == lst[i]:
+            final_date = lst_old[x]
+            salary_date = x
+mx = -1
+amt = 0
+for k in final_date:
+    count = 0
+    for t in final_date:
+        if k + 5000 >= t >= k - 5000:
+            count += 1
+    if mx < count:
+        mx = count
+        amt = k
+    elif mx == count and amt < k:
+        amt = k
+print(amt)
+temp_year = min_year
+temp_month = min_month
+temp_lst = []
+temp = [None] * 12
+for i in range(-1, -len(date), -1):
+    if year[i] > temp_year:
+        temp_lst.append(temp)
+        temp = [None] * 12
+        temp_month = 1
+        temp_year += 1
+    elif date[i] == salary_date and amt + 5000 >= salary[i] >= amt - 5000:
+        if temp[month[i] - 1] is None:
+            temp[month[i] - 1] = salary[i]
+        else:
+            temp[month[i] - 1] = max(temp[month[i] - 1], salary[i])
 
-    "Transaction ID: 12345",
+temp_lst.append(temp)
 
-    "Payment received for Order #6789",
+temp_year = min_year
+temp_month = min_month
+temp_lst1 = []
+temp = [None] * 12
+for i in range(-1, -len(date), -1):
+    if year[i] > temp_year:
+        temp_lst1.append(temp)
+        temp = [None] * 12
+        temp_month = 1
+        temp_year += 1
+    elif date[i] == salary_date - 1 and amt + 5000 >= salary[i] >= amt - 5000:
+        if temp[month[i] - 1] is None:
+            temp[month[i] - 1] = salary[i]
+        else:
+            temp[month[i] - 1] = max(temp[month[i] - 1], salary[i])
 
-    "Deposit made via ATM",
+temp_lst1.append(temp)
 
-    "Funds transferred from Account XYZ"
+temp_year = min_year
+temp_month = min_month
+temp_lst2 = []
+temp = [None] * 12
+for i in range(-1, -len(date), -1):
+    if year[i] > temp_year:
+        temp_lst2.append(temp)
+        temp = [None] * 12
+        temp_month = 1
+        temp_year += 1
+    elif date[i] == salary_date + 1 and amt + 5000 >= salary[i] >= amt - 5000:
+        if temp[month[i] - 1] is None:
+            temp[month[i] - 1] = salary[i]
+        else:
+            temp[month[i] - 1] = max(temp[month[i] - 1], salary[i])
 
-]
+temp_lst2.append(temp)
 
-additional_post_texts = [
-    "Thanks for banking with us",
+temp_month = min_month
+temp_year = 0
+sum_plot = []
+duration = int(duration/10)
+for i in range(duration):
+    sum = 0
+    for j in range(10):
+        if temp_month < 12:
+            if temp_lst[temp_year][temp_month-1] is not None:
+                sum += temp_lst[temp_year][temp_month-1]
+            elif temp_lst1[temp_year][temp_month-1] is not None and temp_lst2[temp_year][temp_month-1] is None:
+                sum += temp_lst1[temp_year][temp_month-1]
+            elif temp_lst1[temp_year][temp_month-1] is None and temp_lst2[temp_year][temp_month-1] is not None:
+                sum += temp_lst2[temp_year][temp_month-1]
+            else: sum += 0
 
-    "Do not reply",
+        else:
+            temp_month = (temp_month % 12)+1
+            temp_year += 1
+            j -= 1
+        temp_month += 1
+    sum_plot.append(sum)
 
-    "Contact customer support for help",
+for i in range(len(sum_plot)):
+    sum_plot[i] = sum_plot[i]/10
+category = []
+for i in range(len(sum_plot)):
+    temp = "Last" + str((i+1)*10) + "months"
+    category.append(temp)
+# creating the bar plot
+fig = plt.figure(figsize=(10, 5))
+plt.bar(category, sum_plot, color='maroon',width=0.4)
 
-    "Not you?. Fwd this sms to 9264092640",
-
-    "Transaction date is " + str(date.today())
-]
-
-dataset = []
-
-# Generate 100 entries
-
-for x in range(10400):
-    action = random.choice(actions)
-
-    additional_pre_text = random.choice(additional_pre_texts)
-    additional_post_text = random.choice(additional_post_texts)
-
-    account_number = str(random.randint(1000000000000001, 9999999999999999))
-
-    amount = str(random.randint(100, 10000))
-
-    message = f"{additional_pre_text} - {action} {account_number} with INR {amount}. {additional_post_text}"
-
-    dataset.append(message)
-print("DONE")
-
-data = 'data1.json'
-data_json = pd.read_json(data,convert_dates=True)
-print(data_json["body"].head())
+plt.xlabel("duration slabs")
+plt.ylabel("avg salary credited")
+plt.title("average salary for every 10 months")
+plt.show()
