@@ -330,7 +330,7 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
         if val == 1:
             # regex to find account numbers
             pattern = r"(?i)(A/c no.|a/c no.|ac no.|AC no.|Ac no.)\D*(\d+(?:\.\d+)?).*"
-            pattern1 = r"(?i)(A/c |A/c|a/c |ac |AC |Ac |account XXXXXXXX|Account XXXXXXXX|account ending with)/X*(\d+)"
+            pattern1 = r"(?i)(A/c |A/c|A/C|A/C |a/c |ac |AC |Ac |account |Account |account ending with)(X)*(\d+)"
             pattern2 = r"(?i)(ef | Ref | Reference |txn |Txn )\D*(\d+(?:\.\d+)?).*"
 
             # regex to find transaction ids/reference numbers
@@ -366,7 +366,7 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
             if match1:
                 account_no.append(int(match1.group(2)[-4:]))
             elif match2:
-                account_no.append(int(match2.group(2)[-4:]))
+                account_no.append(int(match2.group(3)[-4:]))
             else:
                 account_no.append(None)
 

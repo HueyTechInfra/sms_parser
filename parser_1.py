@@ -96,5 +96,4 @@ def comp():
     plt.show()
 
 
-comp()
 

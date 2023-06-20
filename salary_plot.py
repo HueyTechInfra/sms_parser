@@ -4,8 +4,9 @@ import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
 
-
 msgs = []
+
+# code for guessing the salary_date and amount
 format = "%Y-%m-%d"  # used for extraction human-readable date from json date format
 with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
@@ -54,7 +55,7 @@ min_year = year[-1]
 max_month = month[0]
 max_year = year[0]
 lst = []
-for k in range(30):
+for k in range(32):
     temp = []
     for i in range(len(date)):
         if date[i] == k:
@@ -63,18 +64,20 @@ for k in range(30):
 lst_old = lst.copy()
 count = 0
 for i in range(len(lst)):
-    if len(lst[i - count]) < duration - 3:
+    if len(lst[i - count]) < 0.7 * duration:
         del [lst[i - count]]
         count += 1
 date_sal = []
 for i in range(len(lst)):
+    mx_amt = 0
     for k in range(len(lst[i])):
         count = 0
         amt = lst[i][k]
         for t in range(len(lst[i])):
             if amt + 5000 >= lst[i][t] >= amt - 5000:
                 count += 1
-        if count >= duration - 2:
+        if count >= (0.7 * duration) + 1 and amt > mx_amt:
+            mx_amt = amt
             if i not in date_sal:
                 date_sal.append(i)
 final_date = []
@@ -84,19 +87,23 @@ for x in range(len(lst_old)):
         if lst_old[x] == lst[i]:
             final_date = lst_old[x]
             salary_date = x
-mx = -1
+mx = 1
 amt = 0
+print(lst_old[salary_date + 1])
 for k in final_date:
     count = 0
     for t in final_date:
         if k + 5000 >= t >= k - 5000:
             count += 1
-    if mx < count:
-        mx = count
-        amt = k
-    elif mx == count and amt < k:
+
+    if count >= (0.7 * duration) + 1 and amt < k:
         amt = k
 print(amt)
+
+# plotting code according to salary_date and salary_amount which is guessed by the script
+
+salary_date = 30
+amt = 20000
 temp_year = min_year
 temp_month = min_month
 temp_lst = []
@@ -150,7 +157,6 @@ for i in range(-1, -len(date), -1):
             temp[month[i] - 1] = max(temp[month[i] - 1], salary[i])
 
 temp_lst2.append(temp)
-
 temp_month = min_month
 temp_year = 0
 sum_plot = []
@@ -183,9 +189,13 @@ for i in range(len(sum_plot)):
     category.append(temp)
 # creating the bar plot
 fig = plt.figure(figsize=(10, 5))
-plt.bar(category, sum_plot, color='maroon', width=0.4)
+plt.bar(category, sum_plot, color='blue', width=0.4)
 
 plt.xlabel("duration slabs")
 plt.ylabel("avg salary credited")
 plt.title("average salary for every 10 months")
 plt.show()
+
+print(temp_lst1)
+print(temp_lst)
+print(temp_lst2)
