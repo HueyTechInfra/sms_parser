@@ -3,14 +3,18 @@ import re
 import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
+
+
+msgs = []
 format = "%Y-%m-%d"  # used for extraction human-readable date from json date format
-with open('data1.json', 'r', encoding='utf-8') as json_file:
+with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
     date_min1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
     date_min = datetime.strptime(date_min1, format)
     date_max = date_min
     for x in range(len(data)):
+        msgs.append(data[x]["body"])
         data[x]["body"] = data[x]["body"].replace(",", "")  # removing comma to read the amount in full form
         s_time1 = re.sub("\D", '', "/Date(" + str(data[x]["date"]) + ")/")
         d_time1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
@@ -24,7 +28,8 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
 
     duration = (date_max - date_min).days
 json_file.close()
-duration = int(duration/30)
+
+duration = int(duration / 30)
 file = 'messages_with_amountsV2.xlsx'
 d = pd.read_excel(file)
 salary = []
@@ -58,7 +63,7 @@ for k in range(30):
 lst_old = lst.copy()
 count = 0
 for i in range(len(lst)):
-    if len(lst[i - count]) < duration-3:
+    if len(lst[i - count]) < duration - 3:
         del [lst[i - count]]
         count += 1
 date_sal = []
@@ -149,38 +154,38 @@ temp_lst2.append(temp)
 temp_month = min_month
 temp_year = 0
 sum_plot = []
-duration = int(duration/10)
+duration = int(duration / 10)
 for i in range(duration):
     sum = 0
     for j in range(10):
         if temp_month < 12:
-            if temp_lst[temp_year][temp_month-1] is not None:
-                sum += temp_lst[temp_year][temp_month-1]
-            elif temp_lst1[temp_year][temp_month-1] is not None and temp_lst2[temp_year][temp_month-1] is None:
-                sum += temp_lst1[temp_year][temp_month-1]
-            elif temp_lst1[temp_year][temp_month-1] is None and temp_lst2[temp_year][temp_month-1] is not None:
-                sum += temp_lst2[temp_year][temp_month-1]
-            else: sum += 0
+            if temp_lst[temp_year][temp_month - 1] is not None:
+                sum += temp_lst[temp_year][temp_month - 1]
+            elif temp_lst1[temp_year][temp_month - 1] is not None and temp_lst2[temp_year][temp_month - 1] is None:
+                sum += temp_lst1[temp_year][temp_month - 1]
+            elif temp_lst1[temp_year][temp_month - 1] is None and temp_lst2[temp_year][temp_month - 1] is not None:
+                sum += temp_lst2[temp_year][temp_month - 1]
+            else:
+                sum += 0
 
         else:
-            temp_month = (temp_month % 12)+1
+            temp_month = (temp_month % 12) + 1
             temp_year += 1
             j -= 1
         temp_month += 1
     sum_plot.append(sum)
 
 for i in range(len(sum_plot)):
-    sum_plot[i] = sum_plot[i]/10
+    sum_plot[i] = sum_plot[i] / 10
 category = []
 for i in range(len(sum_plot)):
-    temp = "Last" + str((i+1)*10) + "months"
+    temp = "Last" + str((i + 1) * 10) + "months"
     category.append(temp)
 # creating the bar plot
 fig = plt.figure(figsize=(10, 5))
-plt.bar(category, sum_plot, color='maroon',width=0.4)
+plt.bar(category, sum_plot, color='maroon', width=0.4)
 
 plt.xlabel("duration slabs")
 plt.ylabel("avg salary credited")
 plt.title("average salary for every 10 months")
 plt.show()
-

@@ -8,12 +8,12 @@ import parser_1 as parser
 
 # patters for credit messages:
 regex = r"(?i).*(?:credited|received|Credited|Received)\D*(INR|Rs.)\D*(\d+(?:\.\d+)?)"
-regex1 = r"(?i).*(?:credited|received|Credited|Received)\D*(INR|Rs.)\D*(\d+(?:\.\d+)?)"
+regex1 = r"(?i).*(?:credited|received|Credited|Received)\D*(Rs.|INR|Rs. |INR )(\d+(?:\.\d+)?)"
 regex2 = r"(?i)(Rs.|INR)\D*(\d+(?:\.\d+)?).*(?:credited|received|Credited|Received)"
 regex3 = r"(?i).*(Rs.|INR)\.*(\d+(?:\.\d+)?).*(?:credited|received|Credited|Received)"
 
 # patters for debit messages:
-regex4 = r"(?:Rs\.?\s*|INR)\s*(\d+(?:\.\d+)?)\s*(debited|withdrawn)"
+regex4 = r"(Rs.|INR|Rs. |INR )(\d+(?:\.\d+)?).*(debited|withdrawn)"
 regex5 = r"(?i)debited \D*(?:Rs\.|INR)?\s*(\d+(?:\.\d+)?)"
 
 # pattern for ambiguous sms
@@ -28,7 +28,7 @@ regex_util4 = r"(?i)recharge.*?\b(?:Rs\.?|INR)\s*([\d,.]+)\b.*?successful"
 
 format = "%Y-%m-%d"  # used for extraction human-readable date from json date format
 
-with open('data1.json', 'r', encoding='utf-8') as json_file:
+with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
     date_min1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
@@ -48,7 +48,7 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
 
     duration = (date_max - date_min).days
 
-    print("we have sms data of total", duration, "that is from", date_min, "to", date_max)
+    print("we have sms data of total", duration, "days that is from", date_min, "to", date_max)
     count_overdue = count_emi = 0
     sum = 0
     acc_bal_amt = acc_count = 0
@@ -252,7 +252,8 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
 
         # finding utility sms
 
-        elif re.search(regex_util1, msg) or re.search(regex_util2, msg) or re.search(regex_util3, msg) or re.search(regex_util4, msg):
+        elif re.search(regex_util1, msg) or re.search(regex_util2, msg) or re.search(regex_util3, msg) or re.search(
+                regex_util4, msg):
             if re.search(regex_util1, msg):
                 match = re.search(regex_util1, msg)
             elif re.search(regex_util2, msg):
@@ -285,19 +286,19 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
         elif re.search(regex4, msg):
             val = 1
             match = re.search(regex4, msg, re.IGNORECASE)
-            amountdebited.append(float(match.group(1)))
-            sum_debit += float(match.group(1))  # lifetime debit
+            amountdebited.append(float(match.group(2)))
+            sum_debit += float(match.group(2))  # lifetime debit
             count_debit += 1
 
             # calculating sum of amt debited and number of debit transactions in different duration slabs
             if (date_max - d).days <= 30:
-                sum_debit_30 += float(match.group(1))
+                sum_debit_30 += float(match.group(2))
                 count_debit_30 += 1
             if (date_max - d).days <= 60:
-                sum_debit_60 += float(match.group(1))
+                sum_debit_60 += float(match.group(2))
                 count_debit_60 += 1
             if (date_max - d).days <= 90:
-                sum_debit_90 += float(match.group(1))
+                sum_debit_90 += float(match.group(2))
                 count_debit_90 += 1
             amountcredited.append(None)
             str_temp.append(msg)
@@ -329,8 +330,7 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
         if val == 1:
             # regex to find account numbers
             pattern = r"(?i)(A/c no.|a/c no.|ac no.|AC no.|Ac no.)\D*(\d+(?:\.\d+)?).*"
-            pattern1 = r"(?i)(A/c |a/c |ac |AC |Ac |account XXXXXXXX|Account XXXXXXXX|account ending with)\D*(\d+(" \
-                       r"?:\.\d+)?).*"
+            pattern1 = r"(?i)(A/c |A/c|a/c |ac |AC |Ac |account XXXXXXXX|Account XXXXXXXX|account ending with)/X*(\d+)"
             pattern2 = r"(?i)(ef | Ref | Reference |txn |Txn )\D*(\d+(?:\.\d+)?).*"
 
             # regex to find transaction ids/reference numbers
@@ -546,20 +546,21 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
     print(amt_avg_credit_per_trans)
     print(ratio_cnt_avg_daily_credit_trans_30_to_90)
     print(ratio_amt_avg_credit_per_trans_30_to_90)
-    print("customer has had total", cnt_below_mab_penalty_occurances, "below mab occurences")
+    print("customer has had total", cnt_below_mab_penalty_occurances, "below mab occurrences")
     print("total number of neft/imps/rtgs payments have been", cnt_neft_rtgs_imps_tran)
     print("customer has average account balance", avg_acc_bal)
     print("number of payments declined have been", count_decline)
-
     # plotting graphs
     categories = ['legal notices', 'below mab occurrences', 'emi debits', 'declined payments', 'bounced '
                                                                                                'transactions']
     values = [cnt_legal, cnt_below_mab_penalty_occurances, count_emi, count_decline, count_bounce]
     fig = plt.figure(figsize=(12, 7))
-    plt.pie(values, labels=categories)
-
-    # show plot
-    plt.show()
+    try:
+        plt.pie(values, labels=categories)
+        plt.show()  # show plot
+    except:
+        print("no sms lying in any of the categories : legal notices, below mab occurrences, emi debits, "
+              "declined payments or bounced transactions")
 
     barWidth = 0.25
     fig = plt.subplots(figsize=(12, 8))
@@ -571,6 +572,7 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
                    amt_avg_daily_debit_trans]
     arr_bar_cr1 = [amt_avg_daily_credit_trans_30, amt_avg_daily_credit_trans_60, amt_avg_daily_credit_trans_90,
                    amt_avg_daily_credit_trans]
+    print(arr_bar_db,arr_bar_cr,arr_bar_db1,arr_bar_cr1)
     # Set position of bar on X axis
     br1 = np.arange(len(arr_bar_db))
     br2 = [x + barWidth for x in br1]
@@ -590,6 +592,9 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
     plt.title("Total amount credited and debited according to duration slabs")
     plt.legend()
     plt.show()
+
+    br1 = np.arange(len(arr_bar_db1))
+    br2 = [x + barWidth for x in br1]
 
     plt.bar(br1, arr_bar_db1, color='r', width=barWidth,
             edgecolor='grey', label='debit')

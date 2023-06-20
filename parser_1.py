@@ -55,6 +55,9 @@ def comp():
     for i in range(len(res)):
         res[i] = str(res[i])
 
+    print(res)
+    print(credit)
+    print(debit)
     barWidth = 0.25
     fig = plt.subplots(figsize=(12, 8))
     br1 = np.arange(len(credit))
@@ -91,3 +94,7 @@ def comp():
 
     # show plot
     plt.show()
+
+
+comp()
+
