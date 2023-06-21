@@ -101,7 +101,7 @@ for k in final_date:
 # plotting code according to salary_date and salary_amount which is guessed by the script
 
 salary_date = 30
-amt = 20000
+amt = 15000
 final_temp = [[]] * 5
 # storing amounts credited on dates 2 before and 2 after the mentioned date and amount if found in buffer range of
 # 5000, only then mentioned
@@ -123,10 +123,17 @@ for x in range(-2, 3):
                 temp[month[i] - 1] = max(temp[month[i] - 1], salary[i])
     temp_lst.append(temp)
     final_temp[x + 2] = temp_lst
+for i in range(-2, 3):
+    for x in range(len(final_temp[0])):
+        for y in range(0, 12):
+            if final_temp[i + 2][x][y] is None:
+                final_temp[i + 2][x][y] = 0
 
-temp_lst = final_temp[2]
+temp_lst = final_temp[0]
 temp_lst1 = final_temp[1]
-temp_lst2 = final_temp[3]
+temp_lst2 = final_temp[2]
+temp_lst3 = final_temp[3]
+temp_lst4 = final_temp[4]
 
 # making sum_plot array from the arrays generated earlier to use it for plotting
 # this array will contain the average sum for every 10 months
@@ -139,14 +146,11 @@ for i in range(duration):
     sum = 0
     for j in range(10):
         if temp_month < 12:
-            if temp_lst[temp_year][temp_month - 1] is not None:
-                sum += temp_lst[temp_year][temp_month - 1]
-            elif temp_lst1[temp_year][temp_month - 1] is not None and temp_lst2[temp_year][temp_month - 1] is None:
-                sum += temp_lst1[temp_year][temp_month - 1]
-            elif temp_lst1[temp_year][temp_month - 1] is None and temp_lst2[temp_year][temp_month - 1] is not None:
+            if temp_lst2[temp_year][temp_month - 1] != 0:
                 sum += temp_lst2[temp_year][temp_month - 1]
             else:
-                sum += 0
+                sum += max(max(temp_lst[temp_year][temp_month - 1], temp_lst1[temp_year][temp_month - 1]),
+                           max(temp_lst3[temp_year][temp_month - 1], temp_lst4[temp_year][temp_month - 1]))
 
         else:
             temp_month = (temp_month % 12) + 1
@@ -169,7 +173,3 @@ plt.xlabel("duration slabs")
 plt.ylabel("avg salary credited")
 plt.title("average salary for every 10 months")
 plt.show()
-
-print(temp_lst1)
-print(temp_lst)
-print(temp_lst2)
