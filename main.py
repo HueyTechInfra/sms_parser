@@ -28,6 +28,10 @@ regex_util4 = r"(?i)recharge.*?\b(?:Rs\.?|INR)\s*([\d,.]+)\b.*?successful"
 
 format = "%Y-%m-%d"  # used for extraction human-readable date from json date format
 
+# regex for loan amounts
+regex_loan1 = r"loan(?:.*?amount.*?)?\s*(?:Rs\.?|AMT|INR)\s*([\d,]+(?:\.\d{2})?)"
+regex_loan2 = r"disbursed(?:\s+\w+)*?\s+loan.*?(?:Rs\.?|AMT|amount)\D*(\d+(?:\.\d+)?)"
+
 with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
@@ -326,6 +330,19 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
             str_temp.append(msg)
             amount.append(None)
             category.append("debit")
+
+        elif re.search(regex_loan1, msg, re.IGNORECASE) or re.search(regex_loan2, msg, re.IGNORECASE):
+            if re.search(regex_loan1, msg, re.IGNORECASE):
+                match = re.search(regex_loan1, msg, re.IGNORECASE)
+            else:
+                match = re.search(regex_loan2, msg, re.IGNORECASE)
+            amt = match.group(1)
+            val = 1
+            amount.append(amt)
+            str_temp.append(msg)
+            category.append("Loan")
+            amountcredited.append(None)
+            amountdebited.append(None)
 
         if val == 1:
             # regex to find account numbers

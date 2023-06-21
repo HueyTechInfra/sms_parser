@@ -88,8 +88,7 @@ for x in range(len(lst_old)):
             final_date = lst_old[x]
             salary_date = x
 mx = 1
-amt = 0
-print(lst_old[salary_date + 1])
+amt = 0  # the variable storing the salary guessed by the script
 for k in final_date:
     count = 0
     for t in final_date:
@@ -98,65 +97,40 @@ for k in final_date:
 
     if count >= (0.7 * duration) + 1 and amt < k:
         amt = k
-print(amt)
 
 # plotting code according to salary_date and salary_amount which is guessed by the script
 
 salary_date = 30
 amt = 20000
-temp_year = min_year
-temp_month = min_month
-temp_lst = []
-temp = [None] * 12
-for i in range(-1, -len(date), -1):
-    if year[i] > temp_year:
-        temp_lst.append(temp)
-        temp = [None] * 12
-        temp_month = 1
-        temp_year += 1
-    elif date[i] == salary_date and amt + 5000 >= salary[i] >= amt - 5000:
-        if temp[month[i] - 1] is None:
-            temp[month[i] - 1] = salary[i]
-        else:
-            temp[month[i] - 1] = max(temp[month[i] - 1], salary[i])
+final_temp = [[]] * 5
+# storing amounts credited on dates 2 before and 2 after the mentioned date and amount if found in buffer range of
+# 5000, only then mentioned
+for x in range(-2, 3):
+    temp_year = min_year
+    temp_month = min_month
+    temp_lst = []
+    temp = [None] * 12
+    for i in range(-1, -len(date), -1):
+        if year[i] > temp_year:
+            temp_lst.append(temp)
+            temp = [None] * 12
+            temp_month = 1
+            temp_year += 1
+        elif date[i] == salary_date + x and amt + 5000 >= salary[i] >= amt - 5000:
+            if temp[month[i] - 1] is None:
+                temp[month[i] - 1] = salary[i]
+            else:
+                temp[month[i] - 1] = max(temp[month[i] - 1], salary[i])
+    temp_lst.append(temp)
+    final_temp[x + 2] = temp_lst
 
-temp_lst.append(temp)
+temp_lst = final_temp[2]
+temp_lst1 = final_temp[1]
+temp_lst2 = final_temp[3]
 
-temp_year = min_year
-temp_month = min_month
-temp_lst1 = []
-temp = [None] * 12
-for i in range(-1, -len(date), -1):
-    if year[i] > temp_year:
-        temp_lst1.append(temp)
-        temp = [None] * 12
-        temp_month = 1
-        temp_year += 1
-    elif date[i] == salary_date - 1 and amt + 5000 >= salary[i] >= amt - 5000:
-        if temp[month[i] - 1] is None:
-            temp[month[i] - 1] = salary[i]
-        else:
-            temp[month[i] - 1] = max(temp[month[i] - 1], salary[i])
+# making sum_plot array from the arrays generated earlier to use it for plotting
+# this array will contain the average sum for every 10 months
 
-temp_lst1.append(temp)
-
-temp_year = min_year
-temp_month = min_month
-temp_lst2 = []
-temp = [None] * 12
-for i in range(-1, -len(date), -1):
-    if year[i] > temp_year:
-        temp_lst2.append(temp)
-        temp = [None] * 12
-        temp_month = 1
-        temp_year += 1
-    elif date[i] == salary_date + 1 and amt + 5000 >= salary[i] >= amt - 5000:
-        if temp[month[i] - 1] is None:
-            temp[month[i] - 1] = salary[i]
-        else:
-            temp[month[i] - 1] = max(temp[month[i] - 1], salary[i])
-
-temp_lst2.append(temp)
 temp_month = min_month
 temp_year = 0
 sum_plot = []

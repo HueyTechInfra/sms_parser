@@ -27,7 +27,7 @@ regex_util3 = r"(?:Rs\.?|INR)\s?([\d,.]+)\s*recharge successful"
 regex_util4 = r"(?i)recharge.*?\b(?:Rs\.?|INR)\s*([\d,.]+)\b.*?successful"
 
 # regex for loan amounts
-regex_loan1 = r"loan(?:.*?amount.*?)?\s*(?:Rs\.?|AMT|INR)\s*([\d,]+(?:\.\d{2})?)
+regex_loan1 = r"loan(?:.*?amount.*?)?\s*(?:Rs\.?|AMT|INR)\s*([\d,]+(?:\.\d{2})?)"
 regex_loan2 = r"disbursed(?:\s+\w+)*?\s+loan.*?(?:Rs\.?|AMT|amount)\D*(\d+(?:\.\d+)?)"
 
 format = "%Y-%m-%d"  # used for extraction human-readable date from json date format
@@ -84,7 +84,7 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
     date_mab = []
     ztp = []
     for x in range(len(data)):
-        val = 0  # pointer to decide later if sms if of financial type or promotional type
+        val = 0  # pointer to decide later if sms is of financial type or promotional type
 
         s_time1 = re.sub("\D", '', "/Date(" + str(data[x]["date"]) + ")/")
         d1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
@@ -160,7 +160,8 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
                 count_decline_90 += 1
 
         # finding the credit sms
-        elif re.match(regex1, msg) and not re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg, re.IGNORECASE):
+        elif re.match(regex1, msg) and not re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg,
+                                                     re.IGNORECASE):
             match = re.match(regex1, msg)
             sum += float(match.group(2))
             amountcredited.append(float(match.group(2)))
@@ -182,7 +183,8 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
                 sum_credit_90 += float(match.group(2))
                 count_credit_90 += 1
             val = 1
-        elif re.match(regex2, msg) and not re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg, re.IGNORECASE):
+        elif re.match(regex2, msg) and not re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg,
+                                                     re.IGNORECASE):
             match = re.match(regex2, msg)
             sum += float(match.group(2))
             amountcredited.append(float(match.group(2)))
@@ -207,7 +209,8 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
 
         # special case of credit messages are dealt here where those sms aren't categorized which are actually debit sms
         # but provide information of account getting credited
-        elif re.match(regex3, msg) and (not re.match(pattern_w1, msg)) and not re.search( r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg, re.IGNORECASE):
+        elif re.match(regex3, msg) and (not re.match(pattern_w1, msg)) and not re.search(
+                r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg, re.IGNORECASE):
             match = re.match(regex3, msg)
             sum += float(match.group(2))
             amountcredited.append(float(match.group(2)))
@@ -253,7 +256,8 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
 
         # finding utility sms
 
-        elif re.search(regex_util1, msg) or re.search(regex_util2, msg) or re.search(regex_util3, msg) or re.search(regex_util4, msg):
+        elif re.search(regex_util1, msg) or re.search(regex_util2, msg) or re.search(regex_util3, msg) or re.search(
+                regex_util4, msg):
             if re.search(regex_util1, msg):
                 match = re.search(regex_util1, msg)
             elif re.search(regex_util2, msg):
@@ -280,7 +284,6 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
             amountcredited.append(None)
             amountdebited.append(None)
             amount.append(None)
-
 
         # finding debit messages and amount debited
         elif re.search(regex4, msg):
