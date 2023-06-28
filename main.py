@@ -15,6 +15,7 @@ regex3 = r"(?i).*(Rs.|INR)\.*(\d+(?:\.\d+)?).*(?:credited|received|Credited|Rece
 # patters for debit messages:
 regex4 = r"(Rs.|INR|Rs. |INR )(\d+(?:\.\d+)?).*(debited|withdrawn)"
 regex5 = r"(?i)debited \D*(?:Rs\.|INR)?\s*(\d+(?:\.\d+)?)"
+regex6 = r"Debit Card [A-Z]{2}\d{4} for (Rs\.|INR )(\d+).*"
 
 # pattern for ambiguous sms
 pattern_w = r"(?i).*(received|request|requested).*(received|request|requested)"
@@ -34,7 +35,10 @@ format = "%Y-%m-%d"  # used for extraction human-readable date from json date fo
 regex_loan1 = r"loan(?:.*?amount.*?)?\s*(?:Rs\.?|AMT|INR)\s*([\d,]+(?:\.\d{2})?)"
 regex_loan2 = r"disbursed(?:\s+\w+)*?\s+loan.*?(?:Rs\.?|AMT|amount)\D*(\d+(?:\.\d+)?)"
 
-with open('data1.json', 'r', encoding='utf-8') as json_file:
+# regex to count swiggy/zomato/amazon messages
+regex_sender = r".*(swiggy|zomato|amazon|flipkart).*"
+
+with open('new-parser/newdata5.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
     date_min1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
@@ -55,7 +59,7 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
     duration = (date_max - date_min).days
 
     print("we have sms data of total", duration, "days that is from", date_min, "to", date_max)
-    count_overdue = count_emi = 0
+    count_overdue = count_emi = count_order = 0
     sum = 0
     acc_bal_amt = acc_count = 0
     sum_debit_30 = sum_debit_60 = sum_debit_90 = sum_debit = 0
@@ -69,6 +73,8 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
     cnt_legal_90 = cnt_legal_60 = cnt_legal_30 = cnt_legal = 0
     cnt_neft_rtgs_imps_tran = cnt_neft_rtgs_imps_tran_30 = cnt_neft_rtgs_imps_tran_60 = cnt_neft_rtgs_imps_tran_90 = 0
     cnt_below_mab_penalty_occurances = cnt_below_mab_penalty_occurances_90 = cnt_below_mab_penalty_occurances_60 = cnt_below_mab_penalty_occurances_30 = 0
+    cnt_zero_neg_bal = cnt_zero_neg_bal_90 = cnt_zero_neg_bal_60 = cnt_zero_neg_bal_30 = 0
+    cnt_card_limit_exceeded_occurances = cnt_card_limit_exceeded_occurances_90 = cnt_card_limit_exceeded_occurances_60 = cnt_card_limit_exceeded_occurances_30 = 0
     sum_card_30 = sum_card_60 = sum_card_90 = sum_card = 0
     count_card_30 = count_card_60 = count_card_90 = count_card = 0
     sum_atm_30 = sum_atm_60 = sum_atm_90 = sum_atm = 0
@@ -93,6 +99,7 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
         d = datetime.strptime(d1, format)
         decline_bit = 0
         msg = data[x]["body"]  # msg variable stores the body of the sms
+        sender = data[x]["address"]  # sender stores the name of the sender of the sms
         # check if msg contains the word EMI.
         if re.search(r".*EMI.*", msg, re.IGNORECASE):
             # check if it is a reminder message
@@ -311,6 +318,28 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
             amount.append(None)
             category.append("debit")
 
+        elif re.search(regex6, msg):
+            val = 1
+            match = re.search(regex6, msg, re.IGNORECASE)
+            amountdebited.append(float(match.group(2)))
+            sum_debit += float(match.group(2))  # lifetime debit
+            count_debit += 1
+
+            # calculating sum of amt debited and number of debit transactions in different duration slabs
+            if (date_max - d).days <= 30:
+                sum_debit_30 += float(match.group(2))
+                count_debit_30 += 1
+            if (date_max - d).days <= 60:
+                sum_debit_60 += float(match.group(2))
+                count_debit_60 += 1
+            if (date_max - d).days <= 90:
+                sum_debit_90 += float(match.group(2))
+                count_debit_90 += 1
+            amountcredited.append(None)
+            str_temp.append(msg)
+            amount.append(None)
+            category.append("debit")
+
         elif re.search(regex5, msg):
             match = re.search(regex5, msg, re.IGNORECASE)
             val = 1
@@ -449,6 +478,12 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
                     acc_bal_min_60 = int(match2.group(3)) * (-1)
                 if (date_max - d).days <= 90 and int(match2.group(3)) * (-1) < acc_bal_min_90:
                     acc_bal_min_90 = int(match2.group(3)) * (-1)
+
+                # calculation number of occurrences of negative account balance in different duration slabs
+                cnt_zero_neg_bal += 1
+                if (date_max - d).days <= 30: cnt_zero_neg_bal_30 += 1
+                if (date_max - d).days <= 60: cnt_zero_neg_bal_60 += 1
+                if (date_max - d).days <= 90: cnt_zero_neg_bal_90 += 1
             else:
                 acc_bal.append(None)
 
@@ -496,6 +531,17 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
             if (date_max - d).days <= 30: cnt_below_mab_penalty_occurances_30 += 1
             if (date_max - d).days <= 60: cnt_below_mab_penalty_occurances_60 += 1
             if (date_max - d).days <= 90: cnt_below_mab_penalty_occurances_90 += 1
+
+        # finding total number of orders getting placed by customer on various food ordering and e-commerce websites
+        elif re.search(regex_sender, sender, re.IGNORECASE) and re.search(r".*(order|placed|delievered|ordered).*", msg,
+                                                                        re.IGNORECASE):
+            count_order += 1
+        # counting credit card limit exceeded in different duration slabs
+        elif re.search(r".*(exceeded).*(credit limit).*",msg,re.IGNORECASE):
+            cnt_card_limit_exceeded_occurances += 1
+            if (date_max - d).days <= 30: cnt_card_limit_exceeded_occurances_30 += 1
+            if (date_max - d).days <= 60: cnt_card_limit_exceeded_occurances_60 += 1
+            if (date_max - d).days <= 90: cnt_card_limit_exceeded_occurances_90 += 1
 
     avg_acc_bal = int(acc_bal_amt / acc_count)  # avg account balance
     # Create a new DataFrame with messages and amounts debited

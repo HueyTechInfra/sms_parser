@@ -8,7 +8,7 @@ msgs = []
 
 # code for guessing the salary_date and amount
 format = "%Y-%m-%d"  # used for extraction human-readable date from json date format
-with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
+with open('new-parser/newdata5.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
     date_min1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
@@ -97,8 +97,8 @@ for k in final_date:
         amt = k
 # plotting code according to salary_date and salary_amount which is guessed by the script
 
-salary_date = 30
-amt = max(15000, amt)
+# salary_date = 30
+# amt = max(15000, amt)
 print(amt)
 final_temp = [[]] * 5
 # storing amounts credited on dates 2 before and 2 after the mentioned date and amount if found in buffer range of
