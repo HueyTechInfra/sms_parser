@@ -64,19 +64,19 @@ for k in range(32):
 lst_old = lst.copy()
 count = 0
 for i in range(len(lst)):
-    if len(lst[i - count]) < 0.7 * duration:
+    if len(lst[i - count]) < 0.4 * duration:
         del [lst[i - count]]
         count += 1
 date_sal = []
+mx_amt = 0
 for i in range(len(lst)):
-    mx_amt = 0
     for k in range(len(lst[i])):
         count = 0
         amt = lst[i][k]
         for t in range(len(lst[i])):
             if amt + 5000 >= lst[i][t] >= amt - 5000:
                 count += 1
-        if count >= (0.7 * duration) + 1 and amt > mx_amt:
+        if count >= (0.4 * duration) + 1 and amt > mx_amt:
             mx_amt = amt
             if i not in date_sal:
                 date_sal.append(i)
@@ -87,21 +87,19 @@ for x in range(len(lst_old)):
         if lst_old[x] == lst[i]:
             final_date = lst_old[x]
             salary_date = x
-mx = 1
 amt = 0  # the variable storing the salary guessed by the script
 for k in final_date:
     count = 0
     for t in final_date:
         if k + 5000 >= t >= k - 5000:
             count += 1
-
-    if count >= (0.7 * duration) + 1 and amt < k:
+    if count >= (0.4 * duration) + 1 and amt < k:
         amt = k
-
 # plotting code according to salary_date and salary_amount which is guessed by the script
 
 salary_date = 30
-amt = 15000
+amt = max(15000, amt)
+print(amt)
 final_temp = [[]] * 5
 # storing amounts credited on dates 2 before and 2 after the mentioned date and amount if found in buffer range of
 # 5000, only then mentioned

@@ -4,6 +4,7 @@ import pandas as pd
 from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
+
 import parser_1 as parser
 
 # patters for credit messages:
@@ -32,7 +33,7 @@ regex_loan2 = r"disbursed(?:\s+\w+)*?\s+loan.*?(?:Rs\.?|AMT|amount)\D*(\d+(?:\.\
 
 format = "%Y-%m-%d"  # used for extraction human-readable date from json date format
 
-with open('data1.json', 'r', encoding='utf-8') as json_file:
+with open('newdata4.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
     date_min1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
@@ -618,6 +619,8 @@ with open('data1.json', 'r', encoding='utf-8') as json_file:
     plt.title("Total amount credited and debited on average on daily basis according to duration slabs")
     plt.legend()
     plt.show()
+
 json_file.close()
 
-parser.comp()
+# parser.comp()
+

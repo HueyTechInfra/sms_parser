@@ -19,6 +19,8 @@ regex5 = r"(?i)debited \D*(?:Rs\.|INR)?\s*(\d+(?:\.\d+)?)"
 # pattern for ambiguous sms
 pattern_w = r"(?i).*(received|request|requested).*(received|request|requested)"
 pattern_w1 = r"(?i).*(debited|debit)"
+pattern_w2 = r".*(congratulations|congrats|true|order placed|myntra|lenskart).*"
+pattern_w3 = r"\b(?:pending|overdue|due|earliest|clear|presented)\b"
 
 # pattern for utility messages
 regex_util1 = r"(?i)(?:Debited|Credited)\s*(?:\S+\s+)?(?:INR|Rs\.?|Rs)\s*([\d,.]+).*?recharge"
@@ -32,7 +34,7 @@ format = "%Y-%m-%d"  # used for extraction human-readable date from json date fo
 regex_loan1 = r"loan(?:.*?amount.*?)?\s*(?:Rs\.?|AMT|INR)\s*([\d,]+(?:\.\d{2})?)"
 regex_loan2 = r"disbursed(?:\s+\w+)*?\s+loan.*?(?:Rs\.?|AMT|amount)\D*(\d+(?:\.\d+)?)"
 
-with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
+with open('data1.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
     date_min1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
@@ -93,9 +95,8 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
         msg = data[x]["body"]  # msg variable stores the body of the sms
         # check if msg contains the word EMI.
         if re.search(r".*EMI.*", msg, re.IGNORECASE):
-
             # check if it is a reminder message
-            if re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg, re.IGNORECASE):
+            if re.search(pattern_w3, msg, re.IGNORECASE):
                 count_overdue += 1
                 str_temp.append(msg)
                 val = 1
@@ -109,9 +110,9 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
                     amount.append(float(match.group(1)))
                 else:
                     amount.append(None)
+
             else:
                 # emi debit msg
-
                 match1 = re.search(regex4, msg, re.IGNORECASE)
                 match2 = re.search(regex5, msg, re.IGNORECASE)
 
@@ -127,6 +128,7 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
                     amountcredited.append(None)
                     amount.append(None)
                     category.append("EMI")
+
         elif re.match(pattern_w, msg):
             pass
         elif re.match(r'.*(legal notice)', msg, re.IGNORECASE):
@@ -160,8 +162,8 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
                 count_decline_90 += 1
 
         # finding the credit sms
-        elif re.match(regex1, msg) and not re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg,
-                                                     re.IGNORECASE):
+        elif re.match(regex1, msg) and not re.search(pattern_w3, msg, re.IGNORECASE) and not re.search(pattern_w2, msg,
+                                                                                                       re.IGNORECASE):
             match = re.match(regex1, msg)
             sum += float(match.group(2))
             amountcredited.append(float(match.group(2)))
@@ -183,8 +185,8 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
                 sum_credit_90 += float(match.group(2))
                 count_credit_90 += 1
             val = 1
-        elif re.match(regex2, msg) and not re.search(r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg,
-                                                     re.IGNORECASE):
+        elif re.match(regex2, msg) and not re.search(pattern_w3, msg, re.IGNORECASE) and not re.search(pattern_w2, msg,
+                                                                                                       re.IGNORECASE):
             match = re.match(regex2, msg)
             sum += float(match.group(2))
             amountcredited.append(float(match.group(2)))
@@ -210,7 +212,7 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
         # special case of credit messages are dealt here where those sms aren't categorized which are actually debit sms
         # but provide information of account getting credited
         elif re.match(regex3, msg) and (not re.match(pattern_w1, msg)) and not re.search(
-                r"\b(?:pending|overdue|due|earliest|clear|presented)\b", msg, re.IGNORECASE):
+                pattern_w2, msg, re.IGNORECASE) and not re.search(pattern_w3, msg, re.IGNORECASE):
             match = re.match(regex3, msg)
             sum += float(match.group(2))
             amountcredited.append(float(match.group(2)))
@@ -347,7 +349,7 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
         if val == 1:
             # regex to find account numbers
             pattern = r"(?i)(A/c no.|a/c no.|ac no.|AC no.|Ac no.)\D*(\d+(?:\.\d+)?).*"
-            pattern1 = r"(?i)(A/c |A/c|A/C|A/C |a/c |ac |AC |Ac |account |Account |account ending with)(X)*(\d+)"
+            pattern1 = r"(?i)(A/c |A/c|A/C|A/C |a/c |ac |AC |Ac |account |Account |account ending with)(X|/*)*(\d+)"
             pattern2 = r"(?i)(ef | Ref | Reference |txn |Txn )\D*(\d+(?:\.\d+)?).*"
 
             # regex to find transaction ids/reference numbers
@@ -589,7 +591,7 @@ with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
                    amt_avg_daily_debit_trans]
     arr_bar_cr1 = [amt_avg_daily_credit_trans_30, amt_avg_daily_credit_trans_60, amt_avg_daily_credit_trans_90,
                    amt_avg_daily_credit_trans]
-    print(arr_bar_db,arr_bar_cr,arr_bar_db1,arr_bar_cr1)
+    print(arr_bar_db, arr_bar_cr, arr_bar_db1, arr_bar_cr1)
     # Set position of bar on X axis
     br1 = np.arange(len(arr_bar_db))
     br2 = [x + barWidth for x in br1]
