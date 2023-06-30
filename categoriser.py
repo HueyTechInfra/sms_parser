@@ -79,7 +79,8 @@ def categoriser(data):
             if re.search(r"(Rs.|INR).*(\d+)", msg, re.IGNORECASE):
                 match = re.search(r"(Rs.|INR).*(\d+)", msg, re.IGNORECASE)
                 amount.append(match.group(1))
-            else: amount.append(None)
+            else:
+                amount.append(None)
             primary_type.append("info")
             sub_category.append("loan")
 
@@ -222,8 +223,9 @@ def categoriser(data):
             amount.append(None)
 
         # e-commerce
-        elif re.search(regex_sender, sender, re.IGNORECASE) and re.search(r"(order|placed|delivered|ordered|arriving|arrived|return)", msg,
-                                                                          re.IGNORECASE):
+        elif re.search(regex_sender, sender, re.IGNORECASE) and re.search(
+                r"(order|placed|delivered|ordered|arriving|arrived|return)", msg,
+                re.IGNORECASE):
             primary_type.append("info")
             sub_category.append("e-commerce")
             if re.search(r"(Rs.|INR|Rs. |INR )(\d+(?:\.\d+)?)", msg, re.IGNORECASE):
@@ -315,8 +317,10 @@ def categoriser(data):
 
         # finding category of msg : bank, upi, wallet, fastag, e-commerce
         if re.search(regex_sender, sender, re.IGNORECASE):
-            if sub_category[-1] == "e-commerce": category.append("e-commerce")
-            else: category.append("others")
+            if sub_category[-1] == "e-commerce":
+                category.append("e-commerce")
+            else:
+                category.append("others")
         elif match7:
             category.append("UPI")
         elif re.search(r"(hdfc|pnb|bank|bnk|axis|idfc)", sender, re.IGNORECASE):
@@ -333,10 +337,38 @@ def categoriser(data):
          "Date": date, "Length_SMS": len_sms})
 
     # Save the new DataFrame to a new Excel file
-    new_df.to_excel('output.xlsx', index=False)
+    # new_df.to_excel('output.xlsx', index=False)
 
 
-with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
+with open('data.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     categoriser(data)
 json_file.close()
+
+primary_type.reverse()
+sub_category.reverse()
+account_no.reverse()
+date.reverse()
+amount.reverse()
+
+amt = 0
+for x in range(len(primary_type)):
+    if primary_type[x] == "transaction" and sub_category[x] == "debit" and account_no[x] is not None:
+        y = x + 1
+        while date[y] == date[x] and y < len(primary_type):
+            if sub_category[y] == "credit":
+                if account_no[y] is not None and account_no[y] != account_no[x] and amount[y] == amount[x]:
+                    amt += amount[x]
+                    break
+            y += 1
+
+amt_new = 0
+for x in range(len(primary_type)):
+    if primary_type[x] == "transaction" and sub_category[x] == "credit" and account_no[x] is not None:
+        y = x + 1
+        while date[y] == date[x] and y < len(primary_type):
+            if sub_category[y] == "debit":
+                if account_no[y] is not None and account_no[y] != account_no[x] and amount[y] == amount[x]:
+                    amt_new += amount[x]
+                    break
+            y += 1
