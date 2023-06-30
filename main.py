@@ -5,6 +5,7 @@ from datetime import datetime
 import matplotlib.pyplot as plt
 import numpy as np
 import parser_1 as parser
+from categoriser import categoriser
 
 # patters for credit messages:
 regex = r"(?i).*(?:credited|received|Credited|Received)\D*(INR|Rs.)\D*(\d+(?:\.\d+)?)"
@@ -33,13 +34,14 @@ format = "%Y-%m-%d"  # used for extraction human-readable date from json date fo
 
 # regex for loan amounts
 regex_loan1 = r"loan(?:.*?amount.*?)?\s*(?:Rs\.?|AMT|INR)\s*([\d,]+(?:\.\d{2})?)"
-regex_loan2 = r"disbursed(?:\s+\w+)*?\s+loan.*?(?:Rs\.?|AMT|amount)\D*(\d+(?:\.\d+)?)"
+regex_loan2 = r".*loan .* disbursed"
 
 # regex to count swiggy/zomato/amazon messages
 regex_sender = r".*(swiggy|zomato|amazon|flipkart).*"
 
 with open('new-parser/newdata5.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
+    categoriser(data)
     s_time1 = re.sub("\D", '', "/Date(" + str(data[0]["date"]) + ")/")
     date_min1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
     date_min = datetime.strptime(date_min1, format)
@@ -93,7 +95,6 @@ with open('new-parser/newdata5.json', 'r', encoding='utf-8') as json_file:
     ztp = []
     for x in range(len(data)):
         val = 0  # pointer to decide later if sms if of financial type or promotional type
-
         s_time1 = re.sub("\D", '', "/Date(" + str(data[x]["date"]) + ")/")
         d1 = datetime.fromtimestamp(float(s_time1) / 1000).strftime('%Y-%m-%d')
         d = datetime.strptime(d1, format)
@@ -533,7 +534,7 @@ with open('new-parser/newdata5.json', 'r', encoding='utf-8') as json_file:
             if (date_max - d).days <= 90: cnt_below_mab_penalty_occurances_90 += 1
 
         # finding total number of orders getting placed by customer on various food ordering and e-commerce websites
-        elif re.search(regex_sender, sender, re.IGNORECASE) and re.search(r".*(order|placed|delievered|ordered).*", msg,
+        elif re.search(regex_sender, sender, re.IGNORECASE) and re.search(r"(order|placed|delivered|ordered|arriving|arrived|return)", msg,
                                                                         re.IGNORECASE):
             count_order += 1
         # counting credit card limit exceeded in different duration slabs
@@ -542,6 +543,7 @@ with open('new-parser/newdata5.json', 'r', encoding='utf-8') as json_file:
             if (date_max - d).days <= 30: cnt_card_limit_exceeded_occurances_30 += 1
             if (date_max - d).days <= 60: cnt_card_limit_exceeded_occurances_60 += 1
             if (date_max - d).days <= 90: cnt_card_limit_exceeded_occurances_90 += 1
+
 
     avg_acc_bal = int(acc_bal_amt / acc_count)  # avg account balance
     # Create a new DataFrame with messages and amounts debited
@@ -675,6 +677,7 @@ with open('new-parser/newdata5.json', 'r', encoding='utf-8') as json_file:
     plt.title("Total amount credited and debited on average on daily basis according to duration slabs")
     plt.legend()
     plt.show()
+
 json_file.close()
 
 parser.comp()
