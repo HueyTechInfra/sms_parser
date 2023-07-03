@@ -3,6 +3,8 @@ import re
 import pandas as pd
 from datetime import datetime
 
+import parse
+
 # patters for credit messages:
 regex = r"(?i).*(?:credited|received|Credited|Received)\D*(INR|Rs.)\D*(\d+(?:\.\d+)?)"
 regex1 = r"(?i).*(?:credited|received|Credited|Received)\D*(Rs.|INR|Rs. |INR )(\d+(?:\.\d+)?)"
@@ -13,6 +15,7 @@ regex3 = r"(?i).*(Rs.|INR)\.*(\d+(?:\.\d+)?).*(?:credited|received|Credited|Rece
 regex4 = r"(Rs.|INR|Rs. |INR )(\d+(?:\.\d+)?).*(debited|withdrawn)"
 regex5 = r"(?i)debited \D*(?:Rs\.|INR)?\s*(\d+(?:\.\d+)?)"
 regex6 = r"Debit Card [A-Z]{2}\d{4} for (Rs\.|INR )(\d+).*"
+regex7 = r"(?i)(Rs\.?|INR)\s*(\d+(?:\.\d+)?)\s*was spent on your Credit Card"
 
 # pattern for ambiguous sms
 pattern_w = r"(?i).*(received|request|requested).*(received|request|requested)"
@@ -35,8 +38,8 @@ regex_loan3 = r"loan .* disbursed"
 
 # regex to count swiggy/zomato/amazon messages
 regex_sender = r".*(swiggy|zomato|amazon|flipkart|snapdeal|foodpanda).*"
-regex_otp1 = r".*(\d+) is (the)*otp"
-regex_otp2 = r".*otp .* is (\d+)"
+regex_otp1 = r".*(\d+) is (the|your)* (otp|one time security code|one time password)"
+regex_otp2 = r".*(otp|one time password|one time security code) .* is (\d+)"
 
 regex_promotion = r".*(congrats|congratulations|winner|lucky|win big|discount|cashback).*"
 regex_auto_debit = r".*(auto-debit|auto debit|e-mandate).*(request|requested|approved)"
@@ -165,9 +168,11 @@ def categoriser(data):
             sub_category.append("credit")
 
         # finding debit msgs
-        elif re.search(regex4, msg) or re.search(regex6, msg):
+        elif re.search(regex4, msg) or re.search(regex6, msg) or re.search(regex7, msg, re.IGNORECASE):
             if re.search(regex6, msg):
                 match = re.search(regex6, msg)
+            elif re.search(regex7, msg, re.IGNORECASE):
+                match = re.search(regex7, msg, re.IGNORECASE)
             else:
                 match = re.search(regex4, msg, re.IGNORECASE)
             amount.append(float(match.group(2)))
@@ -260,7 +265,7 @@ def categoriser(data):
         # regex to find transaction ids/reference numbers
         pattern3 = r"Ref\.No:(\d+)"  # to match the Ref No
         pattern4 = r"IMPS/\D+/(\d+)/(\d+)"  # to match the IMPS/P2A value
-        pattern5 = r"NEFT.*?(\d+)"  # to extract NEFT
+        pattern5 = r"NEFT/(\w+)/(\D+)\."  # to extract NEFT
         pattern6 = r"UPI/(?:CRADJ|P2A)/([^/]+)"  # to extract UPI
         pattern7 = r"Info\D*(\d{6,})"  # to extract Info
 
@@ -296,7 +301,7 @@ def categoriser(data):
         elif match5:
             transaction_id.append(match5.group(1) + "/" + match5.group(2))
         elif match6:
-            transaction_id.append(match6.group(1))
+            transaction_id.append(match6.group(1) + "/" + match6.group(2))
         elif match7:
             transaction_id.append(match7.group(1))
         elif match8:
@@ -323,7 +328,7 @@ def categoriser(data):
                 category.append("others")
         elif match7:
             category.append("UPI")
-        elif re.search(r"(hdfc|pnb|bank|bnk|axis|idfc)", sender, re.IGNORECASE):
+        elif re.search(r"(hdfc|pnb|bank|bnk|axis|idfc|kotak)", sender, re.IGNORECASE):
             category.append("bank")
         elif primary_type[-1] == "transaction" and re.match(r"wallet", msg, re.IGNORECASE):
             category.append("wallet")
@@ -337,14 +342,15 @@ def categoriser(data):
          "Date": date, "Length_SMS": len_sms})
 
     # Save the new DataFrame to a new Excel file
-    # new_df.to_excel('output.xlsx', index=False)
+    new_df.to_excel('output.xlsx', index=False)
 
 
-with open('data.json', 'r', encoding='utf-8') as json_file:
+with open('new-parser/newdata4.json', 'r', encoding='utf-8') as json_file:
     data = json.load(json_file)
     categoriser(data)
 json_file.close()
 
+# code to find if there is amount that is being self transferred to falsely increase credibility
 primary_type.reverse()
 sub_category.reverse()
 account_no.reverse()
@@ -354,8 +360,8 @@ amount.reverse()
 amt = 0
 for x in range(len(primary_type)):
     if primary_type[x] == "transaction" and sub_category[x] == "debit" and account_no[x] is not None:
-        y = x + 1
-        while date[y] == date[x] and y < len(primary_type):
+        y = x + 1  # iterating through transactions after x transaction on that date
+        while y < len(primary_type) and date[y] == date[x]:
             if sub_category[y] == "credit":
                 if account_no[y] is not None and account_no[y] != account_no[x] and amount[y] == amount[x]:
                     amt += amount[x]
@@ -365,10 +371,12 @@ for x in range(len(primary_type)):
 amt_new = 0
 for x in range(len(primary_type)):
     if primary_type[x] == "transaction" and sub_category[x] == "credit" and account_no[x] is not None:
-        y = x + 1
-        while date[y] == date[x] and y < len(primary_type):
+        y = x + 1  # iterating through transactions after x transaction on that date
+        while y < len(primary_type) and date[y] == date[x]:
             if sub_category[y] == "debit":
                 if account_no[y] is not None and account_no[y] != account_no[x] and amount[y] == amount[x]:
                     amt_new += amount[x]
                     break
             y += 1
+
+print("total self transfer amounts are :", amt_new, amt)
